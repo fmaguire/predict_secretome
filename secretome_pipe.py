@@ -63,63 +63,65 @@ def get_parser():
 
 def which(bin_path, program):
     """
-    Check a
+    Check dependency exists and is executable
     """
-
     exe_path = os.path.join(bin_path, program)
 
-    if os.path.isfile(exe_path) and os.access(exe_path, os.X_OK):
+    return os.path.isfile(exe_path) and os.access(exe_path, os.X_OK)
 
 
+def print_verbose(string, v_flag=False):
+    """
+    Print string only if v_flag is true
+
+    input: string - string to print
+           v_flag - bool to say whether to print
+    output: none
+    """
+
+    if v_flag:
+        print(string)
 
 
-def check_dependencies(argv):
+def check_dependencies(bin_path, argv):
+    """
+    Check the dependencies are in the bin_path and are executable
+    output summary if checking dependencies or running in verbose mode
+    quit after checking if running check mode
 
-            def which(cmd):
-                    command = "which " + cmd
-                    check = subprocess.call([command], stdout=subprocess.PIPE, stderr =subprocess.PIPE, shell=True)
-                    if check == 0:
-                            print cmd + " Present"
-                    else:
-                            print cmd + " Not in PATH or not Installed."
+    input: bin_path - path to dependencies
+           argv - args from command line
+    output: True if it doesn't exit beforehand
+    """
 
-            # this checks for the required executable
-            which("signalp")
-            which("tmhmm")
-            which("targetp")
-            which("chlorop")
-            which("faSomeRecords")
-            which("fasta_formatter")
-            which("runWolfPsortSummary")
+    # if we are running a check run then we want verbose output for this
+    # regardless of other settings
+    if argv.check:
+        verbose = True
+    else:
+        verbose = argv.verbose
 
-            sys.exit(0)
+    dependency_list = ["signalp", "tmhmm", "targetp",
+                       "chlorop", "runWolfPsortSummary",
+                       "fasta_formatter", "faSomeRecords"]
 
-    elif sys.argv[1] == "-h":
-            print """
-            Usage: python Secretome_pipe.py [protein_file.fasta] [output_file_prefix]
+    check_execs = {dependency: which(bin_path, dependency) for dependency in\
+                        dependency_list}
 
-            **IMPORTANT Fasta names must be 20 char or less!!!**
+    for dependency in check_execs:
+        print_verbose("{0} is present? {1}".format(dependency,
+                                                   check_execs(dependency)),
+                      v_flag=verbose)
 
-            If you want to check for the necessary programs use 'python Secretome_pipe.py -check'
-            This script takes a multi-fasta protein file as input and will generate the prediceted secretome
-            as an output. All of the intermidiate files created by the various prediction programs are
-            stored in the directory created and have the output_file_prefix as a leader to the file name.
+    # if any dependency is missing quit
+    if not all(check_execs):
+        sys.exit(0)
 
-            ##NOTE in the file tmhmmformat.pl set the follwoing lines as shown:
+    # if running in check mode quite after checking
+    if argv.check:
+        sys.exit(0)
 
-            $opt_html = 0;       # Make HTML output
-            $opt_short = 1;      # Make short output format
-            $opt_plot = 0;       # Make plots
-            $opt_v1 = 0;         # Use old model (version 1)
-            $opt_signal = 10;    # Cut-off used for producing a warning of possible
-                                 # Signal sequence
-            $opt_Nterm = 0;      # Number of bases to consider for signal peptides
-                                 # in the Nterm
-
-            """
-
-            sys.exit(0)
-
+    return True
 
 
 ########################################################## Main Code ###################################################################

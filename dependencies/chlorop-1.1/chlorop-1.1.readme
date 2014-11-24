@@ -1,0 +1,104 @@
+
+
+   ChloroP 1.1		INSTALLATION INSTRUCTIONS
+
+
+   DESCRIPTION
+
+   ChloroP predicts  (i) the prescence of chloroplast transit peptides (cTPs)
+   in protein sequences and  (ii)  the location of  a potential  cTP cleavage
+   site in each input sequence. The method is described in detail in the
+   following article:
+
+   ChloroP,  a neural network-based method for predicting chloroplast transit
+   peptides and their cleavage sites.
+   Olof Emanuelsson, Henrik Nielsen and Gunnar von Heijne
+   Protein Science (1999) 8:978-984
+
+
+   DOWNLOAD
+
+   The ChloroP 1.1 package  is a  property of  Center for Biological Sequence
+   Analysis.  It may be downloaded  only  by special agreement.  For academic
+   users there is a download site at:
+
+        http://www.cbs.dtu.dk/cgi-bin/nph-sw_request?chlorop
+
+   Other users are requested to contact software@cbs.dtu.dk.
+
+
+   PRE-INSTALLATION
+
+   TargetP 3.0 will run on the most common  UNIX platforms e.g.  Linux, SunOS
+   etc. The package consists of two files:
+  
+        chlorop-1.1.readme	 this file
+        chlorop-1.1.<unix>tar.Z	 compressed TAR archive
+
+   where 'unix' is the UNIX platform on which you are about to install.  Make
+   sure that the following programs are available on your system:
+
+	uname	(usually /bin/uname)
+	paste	(        /bin/paste)
+	nawk	(or equivalent, e.g. gawk)
+
+
+   INSTALLATION
+
+   0. Make sure that the following programs are available on your system:
+
+   1. Decide where you wish to keep the software. Uncompress and untar
+      the package in that location:
+
+      cat chlorop-1.1.tar.Z | uncompress | tar xvf -
+
+      This will produce a directory 'chlorop-1.1'. The size of the
+      uncompressed package is at most 3.5 Mb, depending on which binaries
+      are included.
+
+   2. Edit the paragraph labeled "GENERAL SETTINGS, CUSTOMIZE" at the top
+      of the file "chlorop":
+
+      CHLOROP	full path to the 'chlorop-1.1' directory (mandatory)
+
+      PASTE	      "		 'paste' executable
+      AWK	      "		 'awk' executable (or gawk, nawk etc.)
+      SH	      "		 POSIX-compliant shell
+
+      You might need to alter the settings after the testing.
+
+   3. Make sure that the 'tmp' directory has the sticky bit set. The listing
+      should read "drwxrwxrwt ...". If the sticky bit is not set, set it:
+
+      chmod 1777 tmp
+
+   4. Test the package:
+   
+      ./chlorop test/test1.fsa			# one sequence
+      ./chlorop -F test/test1.fsa		# one sequence, full output
+      ./chlorop test/test12.fsa			# many sequences
+      ./chlorop -F test/test12.fsa		# many sequences, full output
+
+   5. Copy the 'chlorop' script to a directory in the users' path.
+
+   6. Copy the 'chlorop.1' file to a appropriate location in your manual
+      system. If you need a compiled version try running:
+
+      man -d chlorop.1 | compress >chlorop.Z
+
+      or:
+
+      neqn chlorop.1 | tbl | nroff -man | col | compress >chlorop.Z
+
+   7. Enjoy ...
+
+
+   PROBLEMS
+
+   Contact packages@cbs.dtu.dk in case of problems.
+   
+   Questions on the scientific aspects  of the ChloroP method  should be sent
+   to Olof Emanuelsson, olof@sbc.su.se.
+
+   CBS, 7 Feb 2007
+   K. Rapacki

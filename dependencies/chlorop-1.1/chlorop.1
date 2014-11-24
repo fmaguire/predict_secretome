@@ -1,0 +1,85 @@
+.de Id
+.ds Rv \\$3
+.ds Dt \\$4
+..
+.Id $Header: chlorop.1,v 1.3 00/10/11 12:00:00 engel Exp $
+.TH chlorop 1 \" -*- nroff -*-
+.SH NAME
+chlorop \- predict presence of chloroplast transit peptides
+.SH SYNOPSIS
+\fBchlorop\fP [\fB\-h\fP] [\fB\-v\fP] [\fB\-F\fP] [\fIfile\fP]
+.SH DESCRIPTION
+.B chlorop
+predicts (i) the presence of chloroplast transit peptides (\fBcTP\fP) in
+protein sequences, and (ii) the location of a potential \fBcTP\fP cleavage
+site in each input sequence. The method is described in detail in the
+reference quoted below.
+
+The input has to be in \fBFASTA\fP format (see below). It is taken
+from \fIfile\fP or, if no file is specified, from \fIstdin\fP.
+
+The output is in plain text; it will go to \fIstdout\fP. For each input
+sequence the name, length, final NN score, prediction of \fBcTP\fP
+presence (yes or no), cleavage site score and the predicted \fBcTP\fP
+length will be printed on one line. It should be noted that the prediction
+of the transit peptide length is carried out even if its presence is not
+predicted. The purpose is to provide maximal information in borderline cases.
+
+The full output (\fB\-F\fP) contains, in addition to the default output,
+the first layer and derivative NN scores alongside the cleavage site scores
+for each residue in the input sequences.
+.SH OPTIONS
+.TP
+.B \-h
+Show the allowed command line syntax and exit.
+.TP
+.B \-v
+Show the current \fBchlorop\fP version and exit.
+.TP
+.B \-F
+Show full output. In addition to the default output, the first NN layer,
+derivative and cleavage site scores will be shown for each residue in 
+the input.
+.TP
+.I file
+The input file to process. If not specified, \fIstdin\fP will be used instead.
+.SH CAVEATS
+The input sequence names may be of any length but only the 20 first
+characters will be preserved throughout the prediction process and
+presented in the results.
+.SH AUTHOR
+Olof Emanuelsson, olof@sbc.su.se, October 2000.
+.SH REFERENCES
+The method is described in detail in the following article:
+
+ChloroP, a neural network-based method for predicting chloroplast
+transit peptides and their cleavage sites. 
+.br
+Olof Emanuelsson (1), Henrik Nielsen (2), and Gunnar von Heijne (1)
+.br
+Protein Science (1999) \fB8\fP:978-984
+
+
+(1) Stockholm Bioinformatics Center
+.br
+Arrhenius laboratories
+.br
+Stockholm University
+.br
+S-106 91 Stockholm, Sweden
+
+(2) Center for Biological Sequence Analysis
+.br
+The Technical University of Denmark
+.br
+DK-2800 Lyngby, Denmark
+
+Information on the method can also be found at:
+
+     http://www.cbs.dtu.dk/services/ChloroP/
+     .../chlorop-1.1.readme (installation instructions)
+    
+.SH FILES
+\fB/usr/local/bin/chlorop\fP             main executable
+.SH SEE ALSO
+fasta(1), how(1)

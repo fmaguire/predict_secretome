@@ -1,10 +1,12 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
+import shutil
 import sys
 import subprocess
 import warnings
 import argparse
 import os
+import glob
 import hashlib
 from Bio import SeqIO
 
@@ -28,45 +30,45 @@ def get_parser():
                         type=str,
                         dest='input_file',
                         required=True,
-                        help="Input fasta file for secretome prediction "
-                             "(REQUIRED)")
+                        help='Input fasta file for secretome prediction '
+                             '(REQUIRED)')
 
     parser.add_argument('--run_name', '-n',
                         action='store',
                         type=str,
                         dest='run_name',
                         default=False,
-                        help="Prefix for output (default is input filename)")
+                        help='Prefix for output (default is input filename)')
 
 
     parser.add_argument('--check', '-x',
                         action='store_true',
                         dest='check',
                         default=False,
-                        help="Check dependencies of %(prog) then quit "
-                             "(default: %(default))")
+                        help='Check dependencies of %(prog)s then quit '
+                             '(default: %(default)s)')
 
     parser.add_argument('--verbose', '-v',
                         action='store_true',
                         dest='verbose',
                         default=False,
-                        help="Print verbose output "
-                             "(default: %(default))")
+                        help='Print verbose output '
+                             '(default: %(default)s)')
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--conservative', '-c',
                        action='store_true',
                        dest='conservative',
                        default=False,
-                       help="Get conservative secretome prediction "
-                             "(default: %(default))")
+                       help='Get conservative secretome prediction '
+                            '(default: %(default)s)')
 
     group.add_argument('--permissive', '-p',
                        action='store_true',
                        dest='permissive',
                        default=False,
-                       help="Get permissive secretome prediction "
-                             "(default: %(default))")
+                       help='Get permissive secretome prediction '
+                            '(default: %(default)s)')
 
     return parser
 
@@ -74,9 +76,8 @@ def which(bin_path, program):
     """
     Check dependency exists and is executable
     """
-    exe_path = os.path.join(bin_path, program)
-
-    return os.path.isfile(exe_path) and os.access(exe_path, os.X_OK)
+    fpath = os.path.join(bin_path, program)
+    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
 
 def print_verbose(string, v_flag=False):
@@ -92,7 +93,7 @@ def print_verbose(string, v_flag=False):
         print(string)
 
 
-def check_dependencies(bin_path, argv):
+def check_dependencies(bin_path, check_run=False, verbose=False):
     """
     Check the dependencies are in the bin_path and are executable
     output summary if checking dependencies or running in verbose mode
@@ -102,35 +103,33 @@ def check_dependencies(bin_path, argv):
            argv - args from command line
     output: True if it doesn't exit beforehand
     """
-
     # if we are running a check run then we want verbose output for this
     # regardless of other settings
-    if argv.check:
+    if check_run:
         verbose = True
-    else:
-        verbose = argv.verbose
 
     dependency_list = ["signalp", "tmhmm", "targetp",
                        "chlorop", "runWolfPsortSummary",
-                       "fasta_formatter", "faSomeRecords"]
+                       "fasta_formatter"]
 
     check_execs = {dependency: which(bin_path, dependency) for dependency in\
                         dependency_list}
 
     for dependency in check_execs:
         print_verbose("{0} is present? {1}".format(dependency,
-                                                   check_execs(dependency)),
+                                                   check_execs[dependency]),
                       v_flag=verbose)
 
     # if any dependency is missing quit
-    if not all(check_execs):
+
+    if not all(check_execs.values()):
+        print("Dependency absent")
         sys.exit(0)
 
     # if running in check mode quite after checking
-    if argv.check:
+    if check_run:
+        print("Finished dependency check run")
         sys.exit(0)
-
-    return True
 
 
 def format_fasta(input_file, output_file, argv):
@@ -238,6 +237,7 @@ def sigpFasta(verbose=False):
 def tmhmm(verbose=False):
     """
     This function runs tmhmm on the sequences with signal peptides inorder to check for transmembramne domains.
+
     NOTE this uses the mature sequences only so any TM regions in the signal peptide will be avoided/ignored
 
 
@@ -366,12 +366,14 @@ def generate_ouput(input_file, output_file,
     print_verbose("Secretome identification Complete", v_flag=verbose)
 
 
-
 def main(argv):
     """
     Main execution of the program in the proper order
     input: argv from arg parser
     """
+
+    bin_path = os.path.abspath('dependencies/bin')
+    check_dependencies(bin_path)
 
     input_file = argv.input_file
 
@@ -393,7 +395,7 @@ def main(argv):
             raise OSError('Error creating intermediate '
                           'output dir: {0}'.format(tmp_dir))
 
-    formatted_fasta = os.path.join(tmp_dir, "formatted_input.fasta"
+    formatted_fasta = os.path.join(tmp_dir, "formatted_input.fasta")
 
     renaming_mappings = format_fasta(input_file, formatted_fasta, argv)
 

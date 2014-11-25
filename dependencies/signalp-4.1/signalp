@@ -10,12 +10,17 @@
 ###############################################################################
 
 # full path to the signalp-4.1 directory on your system (mandatory)
+
+use Cwd;
+my $dir = getcwd;
+
 BEGIN {
-    $ENV{SIGNALP} = ".";
+    $ENV{SIGNALP} = "dependencies/signalp-4.1";
 }
+print $dir
 
 # determine where to store temporary files (must be writable to all users)
-my $outputDir = "./tmp";
+my $outputDir = "dependencies/signalp-4.1/tmp";
 
 # max number of sequences per run (any number can be handled)
 my $MAX_ALLOWED_ENTRIES=10000;

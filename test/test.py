@@ -21,7 +21,7 @@ class testAncillary(unittest.TestCase):
 
 class testDependencies(unittest.TestCase):
     """
-    Unittest to check dependencies 
+    Unittest to check dependencies work and run as expected
     """
     def setUp(self):
 
@@ -43,7 +43,11 @@ class testDependencies(unittest.TestCase):
     def tearDown(self):
         os.chdir('test')
 
-        
+    def test_check_dependencies(self):
+        ret = utils.check_dependencies('dependencies/bin')
+        self.assertIs(True, ret)
+
+
     def test_signalp(self):
 
         signalp = self.dependencies['signalp']
@@ -168,6 +172,40 @@ class testDependencies(unittest.TestCase):
 
         os.remove(actual_wolfp_output)
 
+class testFormatFasta(unittest.TestCase):
 
+  def setUp(self):
+      os.chdir('..')
+      self.test_fas = os.path.join("test", 
+                                   "test_files", 
+                                   "test.fas")
+
+  def tearDown(self):
+      os.chdir('test')
+
+  def test_format_fasta(self):
+      expected_formatted_output = os.path.join('test',
+                                               'test_files',
+                                               'expected_formatted_fasta')
+
+      tmp_dir = os.path.join('test', 'test_files')
+
+      mappings, formatted_fasta = utils.format_fasta(self.test_fas, tmp_dir)
+    
+
+      with open(expected_formatted_output, 'r') as expected_fh:
+          expected_fasta = expected_fh.readlines()
+
+      with open(formatted_fasta, 'r') as actual_fh:
+            actual_fasta = actual_fh.readlines()
+
+      self.assertEqual(expected_fasta, actual_fasta)
+
+      self.assertEqual(len(mappings), 10)
+
+  def test_renaming_fasta(self):
+      # test renaming fasta using dict
+      self.fail('finish the test')
+    
 if __name__=='__main__':
     unittest.main()

@@ -1,0 +1,11 @@
+# k used for kNN is: 27
+PM50_trimmed_paired_qual32_contig_10408 extr 14, plas 5, mito 3, E.R. 3
+R1qual32.paired_(paired)_contig_1567 extr 12, plas 8, mito 4, E.R. 3
+PM50_trimmed_paired_qual32_contig_16575 cyto_nucl 10, nucl 9.5, cyto 7.5, pero 5, mito 4
+PM50_trimmed_paired_qual32_contig_18412 mito 8, plas 8, nucl 4, E.R. 3, pero 2
+PM50_trimmed_paired_qual32_contig_12144 mito 12, extr 10, cyto 4
+PM50_trimmed_paired_qual32_contig_5857 plas 14, mito 8, E.R. 3
+PM30_NoIndex_L003_R1_001_(paired)_trimmed_(paired)_contig_72552 cyto_nucl 7.5, cyto 6.5, mito 6, nucl 5.5, cysk 4, plas 2, pero 2
+PM30_NoIndex_L003_R1_001_(paired)_trimmed_(paired)_contig_2634 mito 13, cyto 6, extr 4, nucl 3, cyto_pero 3
+R1qual32.paired_(paired)_contig_2534 mito 9, extr 8, cyto 4, nucl 3, plas 3
+PM30_NoIndex_L003_R1_001_(paired)_trimmed_(paired)_contig_8670 nucl 13, cyto 9, mito 3

@@ -1,0 +1,20 @@
+ 
+### targetp v1.1 prediction results ##################################
+Number of query sequences:  10
+Cleavage site predictions not included.
+Using NON-PLANT networks.
+
+Name                  Len            mTP     SP  other  Loc  RC
+----------------------------------------------------------------------
+PM50_trimmed_paired_  118          0.089  0.874  0.034   S    2
+R1qual32.paired_(pai   91          0.034  0.951  0.046   S    1
+PM50_trimmed_paired_   79          0.035  0.578  0.646   _    5
+PM50_trimmed_paired_   69          0.023  0.925  0.174   S    2
+PM50_trimmed_paired_  104          0.091  0.931  0.022   S    1
+PM50_trimmed_paired_   81          0.053  0.520  0.718   _    5
+PM30_NoIndex_L003_R1   62          0.223  0.094  0.706   _    3
+PM30_NoIndex_L003_R1   80          0.067  0.538  0.400   S    5
+R1qual32.paired_(pai   53          0.029  0.887  0.152   S    2
+PM30_NoIndex_L003_R1  100          0.037  0.834  0.272   S    3
+----------------------------------------------------------------------
+cutoff                             0.000  0.000  0.000

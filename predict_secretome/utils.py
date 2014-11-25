@@ -111,8 +111,7 @@ def check_dependencies(path='dependencies/bin',
         verbose = True
 
     dependency_list = ["signalp", "tmhmm", "targetp",
-                       "chlorop", "runWolfPsortSummary",
-                       "fasta_formatter"]
+                       "runWolfPsortSummary"]
 
     check_execs = {dependency: which(path, dependency) for dependency in\
                         dependency_list}
@@ -168,8 +167,8 @@ def format_fasta(input_file,
         truncated_md5 = hashlib.md5(\
               record.description.encode('utf-8')).hexdigest()[:19]
               # hash collision calculation fun time:
-              # md5 is 128bits so a 19 character truncation is N bits
-              # 
+              # md5 is 128bits so a 19 character truncation is 76 bits
+              # 7
 
         rename_mappings.update({truncated_md5: record.description})
 

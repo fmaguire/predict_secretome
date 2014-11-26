@@ -47,7 +47,62 @@ class testDependencies(unittest.TestCase):
         ret = utils.check_dependencies('dependencies/bin')
         self.assertIs(True, ret)
 
+    def dependency_check_util(self, expected, actual, cmd_str, dependency):
 
+        binary = self.dependencies[dependency]
+
+        expected_fn = os.path.join('test',
+                                   'test_files',
+                                    expected)
+
+        actual_fn = os.path.join('test',
+                                 'test_files',
+                                  actual)
+
+        cmd = cmd_str.format(binary, self.test_fas)
+
+        with open(actual_fn, 'w') as out_fh:
+            retcode = subprocess.call(cmd, stdout=out_fh, shell=True)
+
+
+        self.assertEqual(retcode, 0)
+
+        with open(expected_fn, 'r') as expected_fh:
+            expected_output = expected_fh.readlines()
+
+        with open(actual_fn, 'r') as actual_fh:
+            actual_output = actual_fh.readlines()
+
+
+        self.assertEqual(expected_output, actual_output)
+
+        os.remove(actual_fn)
+
+
+    def test_tmhmm(self):
+
+        self.dependency_check_util('expected_tmhmm_output', 
+                                   'actual_tmhmm_output', 
+                                   '{0} {1}',
+                                   'tmhmm')
+
+
+    def test_targetp(self):
+
+        self.dependency_check_util('expected_targetp_output',
+                                   'actual_targetp_output',
+                                    '{0} {1}',
+                                    'targetp')
+        
+
+    def test_wolfpsort(self):
+
+        self.dependency_check_util('expected_wolfp_output',
+                                   'actual_wolfp_output',
+                                    '{0} fungi < {1}',
+                                    'runWolfPsortSummary')
+        
+    
     def test_signalp(self):
 
         signalp = self.dependencies['signalp']
@@ -77,100 +132,6 @@ class testDependencies(unittest.TestCase):
         self.assertEqual(expected_sigpep, actual_sigpep)
 
         os.remove(sigpep_removed)
-
-
-    def test_tmhmm(self):
-        
-        tmhmm = self.dependencies['tmhmm']
-
-        expected_tmhmm_output = os.path.join('test',
-                                             'test_files',
-                                             'expected_tmhmm_output')
-
-        actual_tmhmm_output = os.path.join('test', 
-                                           'test_files',
-                                           'actual_tmhmm_output')
-
-        cmd = "{0} {1}".format(tmhmm, self.test_fas)
-
-        with open(actual_tmhmm_output, 'w') as out_fh:
-            retcode = subprocess.call(cmd.split(), stdout=out_fh)
-
-        self.assertEqual(retcode, 0)
-
-
-        with open(expected_tmhmm_output, 'r') as expected_fh:
-            expected_tmhmm = expected_fh.readlines()
-
-        with open(actual_tmhmm_output, 'r') as actual_fh:
-            actual_tmhmm = actual_fh.readlines()
-
-        self.assertEqual(expected_tmhmm, actual_tmhmm)
-
-        os.remove(actual_tmhmm_output)
-
-
-    def test_targetp(self):
-        
-        targetp = self.dependencies['targetp']
-
-        expected_targetp_output = os.path.join('test',
-                                               'test_files',
-                                               'expected_targetp_output')
-
-        actual_targetp_output = os.path.join('test', 
-                                             'test_files',
-                                             'actual_targetp_output')
-
-        cmd = "{0} {1}".format(targetp, self.test_fas)
-
-        with open(actual_targetp_output, 'w') as out_fh:
-            retcode = subprocess.call(cmd.split(), stdout=out_fh)
-
-        self.assertEqual(retcode, 0)
-
-        with open(expected_targetp_output, 'r') as expected_fh:
-            expected_target = expected_fh.readlines()
-
-        with open(actual_targetp_output, 'r') as actual_fh:
-            actual_targetp = actual_fh.readlines()
-
-
-        self.assertEqual(expected_target, actual_targetp)
-
-        os.remove(actual_targetp_output)
-
-
-    def test_wolfpsort(self):
-        
-        wolfpsort = self.dependencies['runWolfPsortSummary']
-
-        expected_wolfp_output = os.path.join('test',
-                                             'test_files',
-                                             'expected_wolfp_output')
-
-        actual_wolfp_output = os.path.join('test', 
-                                           'test_files',
-                                           'actual_wolfp_output')
-
-        cmd = "{0} fungi < {1}".format(wolfpsort, 
-                                       self.test_fas)
-
-        with open(actual_wolfp_output, 'w') as out_fh:
-            retcode = subprocess.call(cmd, stdout=out_fh, shell=True)
-
-        self.assertEqual(retcode, 0)
-
-        with open(expected_wolfp_output, 'r') as expected_fh:
-            expected_wolfp = expected_fh.readlines()
-
-        with open(actual_wolfp_output, 'r') as actual_fh:
-            actual_wolfp = actual_fh.readlines()
-
-
-        self.assertEqual(expected_wolfp, actual_wolfp)
-
-        os.remove(actual_wolfp_output)
 
 class testFormatFasta(unittest.TestCase):
 

@@ -167,8 +167,10 @@ def format_fasta(input_file,
         truncated_md5 = hashlib.md5(\
               record.description.encode('utf-8')).hexdigest()[:19]
               # hash collision calculation fun time:
-              # md5 is 128bits so a 19 character truncation is 76 bits
-              # 7
+              # md5 is 128bits (hexdigest 32 chars) so a 19 character truncation 
+              # is 76 bits.  Therefore can calculate collision rate using birthday 
+              # attack 
+              # 
 
         rename_mappings.update({truncated_md5: record.description})
 
@@ -370,6 +372,14 @@ def wolfpsort(input_file,
     return wolfpsort_ec_acc
 
 
+def strip_and_read_to_set(fpath):
+
+    with open(fpath, 'r') as fh:
+        output = set(line.strip() for line in fh.readlines())
+
+    return output
+
+
 def secretome(signalp_acc_with_sigpep,
               tmhmm_acc_with_no_tm,
               targetp_secreted_acc,
@@ -377,39 +387,41 @@ def secretome(signalp_acc_with_sigpep,
               tmp_dir,
               conservative=True,
               verbose=False):
+    
 
-    sig_peptides  = set(acc.strip() for acc in open(signalp_acc_with_sigpep))
-    no_tm_domains = set(acc.strip() for acc in open(tmhmm_acc_with_no_tm))
-    secreted      = set(acc.strip() for acc in open(targetp_secreted_acc))
-    extracellular = set(acc.strip() for acc in open(wolfpsort_ec_acc))
+
+    sig_peptides  = strip_and_read_to_set(signalp_acc_with_sigpep)
+    no_tm_domains = strip_and_read_to_set(tmhmm_acc_with_no_tm)
+    secreted      = strip_and_read_to_set(targetp_secreted_acc)
+    extracellular = strip_and_read_to_set(wolfpsort_ec_acc)
 
     if conservative:
         out_flag = 'conservative'
-        predicted_acc = set.intersection(sig_peptides, 
-                                         no_tm_domains, 
-                                         secreted, 
-                                         extracellular)
+        predicted_acc_list = set.intersection(sig_peptides, 
+                                              no_tm_domains, 
+                                              secreted, 
+                                              extracellular)
     else:
         out_flag = 'permissive'
-        predicted_acc = set.union(sig_peptides, 
-                                  no_tm_domains, 
-                                  secreted, 
-                                  extracellular)
+        predicted_acc_list = set.union(sig_peptides, 
+                                       no_tm_domains, 
+                                       secreted, 
+                                       extracellular)
 
-    predicted_secretome_acc = os.path.join(tmp_dir, 
+    prediction_output_fpath = os.path.join(tmp_dir, 
                                            "{0}_predicted_secretome_"
                                            "accessions.txt".format(out_flag))
 
-    if len(predicted_acc) is 0:
+    if len(predicted_acc_list) is 0:  
         warnings.warn("No secreted proteins found using {0} setting".format(out_flag))
 
-    with open(predicted_secretome_acc, 'w') as out_fh:
-        for acc in predicted_acc:
-            print(acc)
+    with open(prediction_output_fpath, 'w') as out_fh:
+        for acc in predicted_acc_list:
+            #print(acc)
             out_fh.write(acc + '\n')
 
 
-    return predicted_acc
+    return predicted_acc_list
 
 
 def generate_output(formatted_fasta,
@@ -429,6 +441,8 @@ def generate_output(formatted_fasta,
     output = "{0}_{1}_predicted_secretome.fasta".format(run_name, out_flag)
     out_handle = open(output, 'w')
 
+    fasta_out = FastaIO.FastaWriter(out_handle, wrap=None)
+    fasta_out.write_header()
 
     print_verbose("Retreving Secretome fasta", v_flag=verbose)
     for record in SeqIO.parse(in_handle, 'fasta'):
@@ -436,8 +450,9 @@ def generate_output(formatted_fasta,
             record.id=rename_mappings[record.id]
             record.name=''
             record.description=''
-            SeqIO.write(record, out_handle, 'fasta')
+            fasta_out.write_record(record)
 
     in_handle.close()
+    fasta_out.write_footer()
     out_handle.close()
     print_verbose("Secretome identification Complete", v_flag=verbose)

@@ -5,7 +5,40 @@ import subprocess
 import predict_secretome.utils as utils
 import warnings
 
-class testDependencies(unittest.TestCase):
+class coreTestingClass(unittest.TestCase):
+
+    def compare_files(self, actual_fpath, expected_fpath):
+
+        with open(expected_fpath, 'r') as expected_fh:
+           expected_output = expected_fh.readlines()
+
+        with open(actual_fpath, 'r') as actual_fh:
+           actual_output = actual_fh.readlines()
+
+        self.assertEqual(expected_output, actual_output)
+
+        os.remove(actual_fpath) 
+
+    def compared_unordered_files(self, actual_fpath, expected_fpath):
+        with open(expected_fpath, 'r') as expected_fh:
+            expected_output = set(acc.strip() for acc in expected_fh.readlines())
+
+        with open(actual_fpath, 'r') as actual_fh:
+            actual_output = set(acc.strip() for acc in actual_fh.readlines())
+
+        self.assertEqual(expected_output, actual_output)
+
+        #os.remove(actual_fpath)
+
+
+    def compare_returned_list_to_output(self, list_of_output, output_fn):
+        with open(output_fn, 'r') as out_fh:
+           output = set(acc.strip() for acc in out_fh.readlines())
+
+        self.assertEqual(set(list_of_output), output)
+
+
+class testDependencies(coreTestingClass):
     """
     Unittest to check dependencies work and run as expected
     """
@@ -69,19 +102,6 @@ class testDependencies(unittest.TestCase):
         self.compare_files(actual_fn, expected_fn)
 
 
-    def compare_files(self, actual_fpath, expected_fpath):
-
-        with open(expected_fpath, 'r') as expected_fh:
-           expected_output = expected_fh.readlines()
-
-        with open(actual_fpath, 'r') as actual_fh:
-           actual_output = actual_fh.readlines()
-
-        self.assertEqual(expected_output, actual_output)
-
-        os.remove(actual_fpath)
-
-
     def test_tmhmm(self):
 
         self.run_dependencies_and_check_output('expected_tmhmm_output', 
@@ -130,7 +150,7 @@ class testDependencies(unittest.TestCase):
 
 
 
-class testFormatFasta(unittest.TestCase):
+class testFormatFasta(coreTestingClass):
 
   def setUp(self):
       os.chdir('..')
@@ -144,19 +164,6 @@ class testFormatFasta(unittest.TestCase):
 
   def tearDown(self):
       os.chdir('test')
-
-
-  def compare_files(self, actual_fpath, expected_fpath):
-
-        with open(expected_fpath, 'r') as expected_fh:
-           expected_output = expected_fh.readlines()
-
-        with open(actual_fpath, 'r') as actual_fh:
-           actual_output = actual_fh.readlines()
-
-        self.assertEqual(expected_output, actual_output)
-
-        os.remove(actual_fpath)
 
 
   def test_format_fasta(self):
@@ -195,7 +202,7 @@ class testFormatFasta(unittest.TestCase):
       self.compare_files(output_fn, self.test_fas)
 
 
-class testSecretome(unittest.TestCase):
+class testSecretome(coreTestingClass):
 
     def setUp(self):
         self.list_1_fn = os.path.join('test_files', "acc_list_1.txt")
@@ -206,24 +213,7 @@ class testSecretome(unittest.TestCase):
         self.tmp_dir = 'test_files'
 
 
-    def compared_unordered_files(self, actual_fpath, expected_fpath):
-        with open(expected_fpath, 'r') as expected_fh:
-            expected_output = set(acc.strip() for acc in expected_fh.readlines())
-
-        with open(actual_fpath, 'r') as actual_fh:
-            actual_output = set(acc.strip() for acc in actual_fh.readlines())
-
-        self.assertEqual(expected_output, actual_output)
-
-        #os.remove(actual_fpath)
-
-
-    def compare_returned_list_to_output(self, list_of_output, output_fn):
-        with open(output_fn, 'r') as out_fh:
-           output = set(acc.strip() for acc in out_fh.readlines())
-
-        self.assertEqual(set(list_of_output), output)
-
+    
 
     def test_conservative(self):
         expected_permissive_list_fn = os.path.join(self.tmp_dir,
@@ -281,6 +271,79 @@ class testSecretome(unittest.TestCase):
 
             self.compare_returned_list_to_output(accession_list, actual_output_fn)
             self.compared_unordered_files(actual_output_fn, null_file)
+
+
+class testDependencyParsing(coreTestingClass):
+
+    def setUp(self):
+        os.chdir('..')
+        self.formatted_fasta = os.path.join('test', 
+                                            'test_files', 
+                                            'expected_formatted_fasta')
+        self.tmp_dir = os.path.join('test', 'test_files')
+
+        self.test_fas = os.path.join(self.tmp_dir, 'test.fas')
+
+
+        #self.expected_seqs_with_sigpep_removed = os.path.join(self.tmp_dir, '')
+
+
+
+    def tearDown(self):
+        os.chdir('test')
+
+
+    def test_tmhmm_func(self):
+        expected_acc_without_tm_domains = os.path.join(self.tmp_dir, 
+                                                      'test_without_tm_domains.txt')
+        
+        actual_acc_without_tm_domains = utils.tmhmm(self.test_fas, '')
+
+        self.assertEqual(["PM50_trimmed_paired_qual32_contig_10408",
+                          "R1qual32.paired_(paired)_contig_1567",
+                          "PM50_trimmed_paired_qual32_contig_16575",
+                          "PM50_trimmed_paired_qual32_contig_18412",
+                          "PM30_NoIndex_L003_R1_001_(paired)_trimmed_(paired)_contig_72552",
+                          "PM30_NoIndex_L003_R1_001_(paired)_trimmed_(paired)_contig_2634",
+                          "R1qual32.paired_(paired)_contig_2534",
+                          "PM30_NoIndex_L003_R1_001_(paired)_trimmed_(paired)_contig_8670"],
+                          actual_acc_without_tm_domains)
+        
+     
+    def test_signalp_func(self):
+        self.fail()
+
+          # seqs_sigpep_removed, acc_with_sigpeps, full_sequences_with_sigpep = utils.signalp(self.formatted_fasta,
+           #           self.tmp_dir)
+
+
+    def test_wolfpsort_func(self):
+
+        expected_extracellular_accessions = os.path.join(self.tmp_dir, 
+                                                         'test_extr_acc.txt')
+
+        actual_extracellular_accessions = utils.wolfpsort(self.test_fas, '')
+
+        self.assertEqual(["PM50_trimmed_paired_qual32_contig_10408",
+                         "R1qual32.paired_(paired)_contig_1567"],
+                          actual_extracellular_accessions)
+
+
+    def test_targetp_func(self):
+        
+        expected_secreted_accessions = os.path.join(self.tmp_dir, 
+                                                         'test_s_acc_truncated.txt')
+
+        actual_secreted_accessions = utils.targetp(self.test_fas, '')
+
+        self.assertEqual(["PM50_trimmed_paired_",
+                          "R1qual32.paired_(pai",
+                          "PM50_trimmed_paired_",
+                          "PM50_trimmed_paired_",
+                          "PM30_NoIndex_L003_R1",
+                          "R1qual32.paired_(pai",
+                          "PM30_NoIndex_L003_R1"],
+                          actual_secreted_accessions)
 
 
 if __name__=='__main__':

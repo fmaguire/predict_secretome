@@ -12,15 +12,12 @@ from Bio import SeqIO
 from Bio.SeqIO import FastaIO
 
 """
-This is a script desiged to take a multiple protien fasta as input and provide
-the predicted secretome as output. The program requires that signalp, tmhmm,
-targetp, chlorop, faSomeRecords, wolfpsort, and fasta_formatter be in the
-users PATH. See those programs documentation for installation instructions.
-Settings are for fungi change inputs for programs as necessary (targetp,
-and wolfpsort)
+Finlay Maguire 2014
+Adapted from a similar script by Ian Misner 
+
+Input multi-protein fasta and generate a conservative or permissive 
+predicted secretome as output.  
 """
-
-
 
 def get_parser():
 
@@ -264,31 +261,23 @@ def tmhmm(seqs_with_sigpep_removed,
                                   domains
     """
 
-    acc_w_no_tm_domains = os.path.join(tmp_dir, 'tmhmm_acc_with_no_tm_domain.txt')
-
     tmhmm = os.path.join(path, 'tmhmm')
     tmhmm_cmd= "{0} {1}".format(tmhmm,
                                 seqs_with_sigpep_removed)
-    raw_output = os.path.join(tmp_dir, acc_w_no_tm_domains + '_tmp')
+    
 
     print_verbose("Running TMHMM on mature signalp sequences only", v_flag=verbose)
-    with open(raw_output, 'w') as fh:
-        tmhmm_retcode = subprocess.call(tmhmm_cmd.split(), stdout=fh)
+    tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
+    tmhmm_output = tmhmm_output.decode('ascii').split('\n')
     print_verbose("TMHMM complete", v_flag=verbose)
 
     print_verbose("Identifying sequences without tm regions.", v_flag=verbose)
     # Parse tmhmm raw output and write acc without tm domains
     # in non signal peptide sequence to output_file
-    with open(raw_output, 'r') as raw_fh:
-        with open(acc_w_no_tm_domains, 'w') as out_fh:
-            for line in raw_fh:
-                if "\tPredHel=0\t" in line:
-                    out_fh.write(line.split('\t')[0] + '\n')
+    parsed_output = [line.split('\t')[0] \
+                        for line in tmhmm_output if "\tPredHel=0\t" in line]
 
-
-    os.remove(raw_output)
-
-    return acc_w_no_tm_domains
+    return parsed_output
 
 
 def targetp(full_seqs_with_sigpeps,
@@ -305,32 +294,22 @@ def targetp(full_seqs_with_sigpeps,
         targetp_flag = "-N"
 
     targetp = os.path.join(path, 'targetp')
-
     targetp_cmd = "{0} {1} {2}".format(targetp, targetp_flag, full_seqs_with_sigpeps)
 
-    raw_targetp_out = os.path.join(tmp_dir, 'raw_targetp_output')
-
-    print_verbose("Running TargetP on sequences identified by SignalP as having a sig_pep", v_flag=verbose)
-    with open(raw_targetp_out, 'w') as fh:
-        targetp_retcode = subprocess.call(targetp_cmd.split(), stdout=fh)
+    print_verbose("Running TargetP on sequences "
+                  "identified by SignalP as having a sig_pep", v_flag=verbose)
+    targetp_output = subprocess.check_output(targetp_cmd.split())
+    targetp_output = targetp_output.decode('ascii').split('\n')
     print_verbose("TargetP complete", v_flag=verbose)
 
+
     print_verbose("Identifying sequences that are secreted", v_flag=verbose)
-    targetp_secreted_acc = os.path.join(tmp_dir, 'targetp_secreted_acc.txt')
-
     # remove header and tail cruft in targetp output
-    with open(raw_targetp_out, 'r') as raw_fh:
-        raw_output = [line for line in raw_fh.readlines()]
-        raw_output = raw_output[8:-2]
+    # and get those that have S as top predicted target 
+    parsed_output = [line.split(' ')[0] \
+                          for line in targetp_output[8:-3] if "S" in line]
 
-    with open(targetp_secreted_acc, 'w') as out_fh:
-        for line in raw_output:
-            if "S" in line:
-                out_fh.write(line.split(' ')[0]+'\n')
-
-    os.remove(raw_targetp_out)
-
-    return targetp_secreted_acc
+    return parsed_output
 
 
 def wolfpsort(input_file,
@@ -350,26 +329,17 @@ def wolfpsort(input_file,
     raw_output = os.path.join(tmp_dir, 'wolfpsort_raw_output')
 
     print_verbose("Running WoLFPSORT", v_flag=verbose)
-    with open(raw_output, 'w') as raw_out_fh:
-        wolfpsort_retcode = subprocess.call(wolfpsort_cmd, stdout=raw_out_fh, shell=True)
+    wolfpsort_output = subprocess.check_output(wolfpsort_cmd, shell=True)
+    wolfpsort_output = wolfpsort_output.decode('ascii').split('\n')
     print_verbose("WoLFPSORT complete", v_flag=verbose)
 
-    # Removes header from output file
-    with open(raw_output, 'r') as raw_out_fh:
-        raw_output_parsed = [line for line in raw_out_fh.readlines()]
-        raw_output_parsed = raw_output_parsed[1:]
 
-    wolfpsort_ec_acc = os.path.join(tmp_dir, 'wolfpsort_extracellular_acc.txt')
+    print_verbose("Parsing WoLFPSort output", v_flag=verbose)
+    # Removes header from output 
+    parsed_output = [line.split(' ')[0] \
+                        for line in wolfpsort_output[1:-1] if "extr" in line.split()[1]]
 
-    # Places fastas with extracellualr location into good list
-    with open(wolfpsort_ec_acc, 'w') as out_fh:
-        for line in raw_output_parsed:
-            if line.split()[1] == "extr":
-                out_fh.write(line.split(' ')[0] + '\n')
-
-    os.remove(raw_output)
-
-    return wolfpsort_ec_acc
+    return parsed_output
 
 
 def strip_and_read_to_set(fpath):
@@ -380,20 +350,18 @@ def strip_and_read_to_set(fpath):
     return output
 
 
-def secretome(signalp_acc_with_sigpep,
-              tmhmm_acc_with_no_tm,
-              targetp_secreted_acc,
-              wolfpsort_ec_acc,
+def secretome(signalp_pred_with_sigpep_fn,
+              tmhmm_pred_with_no_tm_fn,
+              targetp_pred_secreted_fn,
+              wolfpsort_pred_ec_fn,
               tmp_dir,
               conservative=True,
               verbose=False):
     
-
-
-    sig_peptides  = strip_and_read_to_set(signalp_acc_with_sigpep)
-    no_tm_domains = strip_and_read_to_set(tmhmm_acc_with_no_tm)
-    secreted      = strip_and_read_to_set(targetp_secreted_acc)
-    extracellular = strip_and_read_to_set(wolfpsort_ec_acc)
+    sig_peptides  = strip_and_read_to_set(signalp_pred_with_sigpep_fn)
+    no_tm_domains = strip_and_read_to_set(tmhmm_pred_with_no_tm_fn)
+    secreted      = strip_and_read_to_set(targetp_pred_secreted_fn)
+    extracellular = strip_and_read_to_set(wolfpsort_pred_ec_fn)
 
     if conservative:
         out_flag = 'conservative'
@@ -417,7 +385,6 @@ def secretome(signalp_acc_with_sigpep,
 
     with open(prediction_output_fpath, 'w') as out_fh:
         for acc in predicted_acc_list:
-            #print(acc)
             out_fh.write(acc + '\n')
 
 

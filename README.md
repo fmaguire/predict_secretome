@@ -1,6 +1,8 @@
 README
 ======
 
+[![Build Status](https://travis-ci.org/fmaguire/predict_secretome.svg)](https://travis-ci.org/fmaguire/predict_secretome)
+
 This is a package designed to generated secretome predictions by combining 
 outputs of various programs (packaged in dependencies). 
 

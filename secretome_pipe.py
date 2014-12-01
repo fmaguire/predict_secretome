@@ -48,53 +48,55 @@ def main(argv):
 
 
 
-    renaming_mappings, formatted_fasta = utils.format_fasta(input_file,
-                                                            tmp_dir,
-                                                            verbose=argv.verbose)
+    rename_mappings, formatted_fasta_fp = utils.format_fasta(input_file,
+                                                             tmp_dir,
+                                                             verbose=argv.verbose)
 
 
-    seqs_sigpep_removed, \
-    acc_with_sigpeps, \
-    full_seqs_with_sigpeps = utils.signalp(formatted_fasta,
-                                           tmp_dir,
-                                           path=bin_path,
-                                           verbose=argv.verbose)
-
-    acc_with_no_tm_domains = utils.tmhmm(seqs_sigpep_removed,
-                                         tmp_dir,
-                                         path=bin_path,
-                                         verbose=argv.verbose)
-
-    targetp_secreted_acc = utils.targetp(full_seqs_with_sigpeps,
-                                         tmp_dir,
-                                         path=bin_path,
-                                         verbose=argv.verbose)
-
-
-    wolfpsort_extracellular_acc = utils.wolfpsort(formatted_fasta,
+    mature_seqs_fp, \
+    accessions_with_sig_pep, \
+    full_sequences_with_sigpep_fp = utils.signalp(formatted_fasta_fp,
                                                   tmp_dir,
                                                   path=bin_path,
                                                   verbose=argv.verbose)
+
+    accesions_no_tm_in_mature_seq = utils.tmhmm(mature_seqs_fp,
+                                               tmp_dir,
+                                               path=bin_path,
+                                               verbose=argv.verbose)
+
+    secreted_accessions = utils.targetp(full_sequences_with_sigpep_fp,
+                                        tmp_dir,
+                                        plant=False,
+                                        path=bin_path,
+                                        verbose=argv.verbose)
+
+
+    extracellular_accessions = utils.wolfpsort(formatted_fasta_fp,
+                                               tmp_dir,
+                                               path=bin_path,
+                                               verbose=argv.verbose)
+
 
     if argv.permissive:
         conservative_flag = False
     else:
         conservative_flag = True
 
-    secretome_acc = utils.secretome(acc_with_sigpeps,
-                                    acc_with_no_tm_domains,
-                                    targetp_secreted_acc,
-                                    wolfpsort_extracellular_acc,
-                                    tmp_dir,
-                                    conservative=conservative_flag,
-                                    verbose=argv.verbose)
+    secretome_accessions = utils.secretome(accessions_with_sig_pep,
+                                           accesions_no_tm_in_mature_seq,
+                                           secreted_accessions,
+                                           extracellular_accessions,
+                                           tmp_dir,
+                                           conservative=conservative_flag,
+                                           verbose=argv.verbose)
 
-    predicted_secretome = utils.generate_output(formatted_fasta,
-                                               secretome_acc,
-                                               renaming_mappings,
-                                               run_name,
-                                               conservative=conservative_flag,
-                                               verbose=argv.verbose)
+    predicted_secretome = utils.generate_output(formatted_fasta_fp,
+                                                secretome_acc,
+                                                renaming_mappings,
+                                                run_name,
+                                                conservative=conservative_flag,
+                                                verbose=argv.verbose)
 
     if not argv.nocleanup:
         shutil.rmtree(tmp_dir)

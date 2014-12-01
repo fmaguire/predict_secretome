@@ -205,61 +205,51 @@ class testFormatFasta(coreTestingClass):
 class testSecretome(coreTestingClass):
 
     def setUp(self):
-        self.list_1_fn = os.path.join('test_files', "acc_list_1.txt")
-        self.list_2_fn = os.path.join('test_files', "acc_list_2.txt")
-        self.list_3_fn = os.path.join('test_files', "acc_list_3.txt")
-        self.list_4_fn = os.path.join('test_files', "acc_list_4.txt")
-        
+        self.list_1 = ['A', 'B']
+        self.list_2 = ['A', 'B', 'C']
+        self.list_3 = ['A', 'B', 'D', 'E']
+        self.list_4 = ['A', 'B', 'E', 'F']
+
         self.tmp_dir = 'test_files'
 
-
-    
 
     def test_conservative(self):
         expected_permissive_list_fn = os.path.join(self.tmp_dir,
                                                    "expected_conservative_secretome_accessions.txt")
 
-        accession_list = utils.secretome(self.list_1_fn,
-                                         self.list_2_fn,
-                                         self.list_3_fn,
-                                         self.list_4_fn,
+        accession_list = utils.secretome(self.list_1,
+                                         self.list_2,
+                                         self.list_3,
+                                         self.list_4,
                                          self.tmp_dir)  
 
-        actual_output_fn = os.path.join(self.tmp_dir, "conservative_predicted_secretome_accessions.txt")
-
-        self.compared_unordered_files(actual_output_fn, expected_permissive_list_fn)
-        self.compare_returned_list_to_output(accession_list, actual_output_fn)
-
+        self.assertEqual({'A', 'B'}, accession_list)
 
     def test_permissive(self):
         expected_permissive_list_fn = os.path.join(self.tmp_dir, 
                                                    "expected_permissive_secretome_accessions.txt")
 
-        accession_list = utils.secretome(self.list_1_fn,
-                                         self.list_2_fn,
-                                         self.list_3_fn,
-                                         self.list_4_fn,
+        accession_list = utils.secretome(self.list_1,
+                                         self.list_2,
+                                         self.list_3,
+                                         self.list_4,
                                          self.tmp_dir,  
                                          conservative=False)
 
-        actual_output_fn = os.path.join(self.tmp_dir, "permissive_predicted_secretome_accessions.txt")
-
-        self.compare_returned_list_to_output(accession_list, actual_output_fn)
-        self.compared_unordered_files(actual_output_fn, expected_permissive_list_fn)
+        self.assertEqual({'A', 'B', 'C', 'D', 'E', 'F'}, accession_list)
 
 
     def test_null_output(self):
-        null_file = os.path.join('test_files', 
-                                 'acc_list_null.txt')
+        null = []
 
 
         with warnings.catch_warnings(record=True) as w:                         
                 
             
-            accession_list = utils.secretome(self.list_1_fn,
-                                             self.list_2_fn,
-                                             self.list_3_fn,
-                                             null_file,
+            accession_list = utils.secretome(self.list_1,
+                                             self.list_2,
+                                             self.list_3,
+                                             null,
                                              self.tmp_dir)
 
             self.assertEqual(len(w), 1)                                         
@@ -267,10 +257,7 @@ class testSecretome(coreTestingClass):
             self.assertEqual(str(w[-1].message), 
                             "No secreted proteins found using {0} setting".format('conservative'))
 
-            actual_output_fn = os.path.join(self.tmp_dir, "conservative_predicted_secretome_accessions.txt")
-
-            self.compare_returned_list_to_output(accession_list, actual_output_fn)
-            self.compared_unordered_files(actual_output_fn, null_file)
+            self.assertEqual(set(), accession_list)
 
 
 class testDependencyParsing(coreTestingClass):
@@ -311,10 +298,28 @@ class testDependencyParsing(coreTestingClass):
         
      
     def test_signalp_func(self):
-        self.fail()
+        expected_accessions_with_sig_pep = ['PM50_trimmed_paired_qual32_contig_10408',
+                                            'R1qual32.paired_(paired)_contig_1567',
+                                            'PM50_trimmed_paired_qual32_contig_16575',
+                                            'PM50_trimmed_paired_qual32_contig_18412',
+                                            'PM50_trimmed_paired_qual32_contig_12144',
+                                            'R1qual32.paired_(paired)_contig_2534']
 
-          # seqs_sigpep_removed, acc_with_sigpeps, full_sequences_with_sigpep = utils.signalp(self.formatted_fasta,
-           #           self.tmp_dir)
+        expected_mature_seq_fp = os.path.join(self.tmp_dir, 'expected_signalp_mature_seqs.fasta')
+
+        expected_full_sequences_with_sigpep_fp = os.path.join(self.tmp_dir, 
+                                                              'expected_signalp_full_seqs_with_sigpep.fasta')
+
+        actual_mature_seqs_fp, \
+        actual_accessions_with_sig_pep, \
+        actual_full_sequences_with_sigpep_fp = utils.signalp(self.test_fas, '')
+
+        self.assertEqual(actual_accessions_with_sig_pep, expected_accessions_with_sig_pep)
+
+        self.compare_files(actual_full_sequences_with_sigpep_fp, expected_full_sequences_with_sigpep_fp)
+
+        self.compare_files(actual_mature_seqs_fp, expected_mature_seq_fp)
+
 
 
     def test_wolfpsort_func(self):

@@ -2,4 +2,4 @@
 
 cd test
 python test.py
-cd ..
+exit $?

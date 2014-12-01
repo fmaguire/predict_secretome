@@ -20,3 +20,5 @@ Requies:
 * python3 
 * perl (specifically installed at /usr/bin/perl)
 * biopython
+
+Run tests by invoking ```./test/test.py``` from main directory

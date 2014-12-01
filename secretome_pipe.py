@@ -92,8 +92,8 @@ def main(argv):
                                            verbose=argv.verbose)
 
     predicted_secretome = utils.generate_output(formatted_fasta_fp,
-                                                secretome_acc,
-                                                renaming_mappings,
+                                                secretome_accessions,
+                                                rename_mappings,
                                                 run_name,
                                                 conservative=conservative_flag,
                                                 verbose=argv.verbose)

@@ -113,6 +113,7 @@ def check_dependencies(path='dependencies/bin',
     check_execs = {dependency: which(path, dependency) for dependency in\
                         dependency_list}
 
+    print_verbose("\n##Checking Depdencies##",v_flag=verbose)
     for dependency in check_execs:
         print_verbose("{0} is present? {1}".format(dependency,
                                                    check_execs[dependency]),
@@ -143,7 +144,7 @@ def format_fasta(input_file_fp,
     output: rename_mappings - a dict of {new_acc: original_acc}
     """
 
-    print_verbose("Formatting input fasta: {0}".format(input_file_fp),
+    print_verbose("\n##Formatting input fasta: {0}##".format(input_file_fp),
                   v_flag=verbose)
 
     formatted_fasta_fp = os.path.join(tmp_dir, "formatted_input.fasta")
@@ -182,7 +183,7 @@ def format_fasta(input_file_fp,
     raw_fasta_in_fh.close()
     formatted_out_fh.close()
 
-    print_verbose("Input fasta formatted: {0}".format(input_file_fp),
+    print_verbose("Input fasta formatted: {0}".format(formatted_fasta_fp),
                   v_flag=verbose)
 
     return rename_mappings, formatted_fasta_fp
@@ -219,12 +220,12 @@ def signalp(input_file,
     # predicted as having signal peptides (which have then been subsequently
     # trimmed)
 
-    print_verbose("Running SignalP", v_flag=verbose)
+    print_verbose("\n##Detecing signal peptides##", v_flag=verbose)
     with open(os.devnull) as null:
         sigp_retcode = subprocess.call(sigp_cmd.split(), stdout=null)
-    print_verbose("SignalP Complete", v_flag=verbose)
+    print_verbose("Search Complete", v_flag=verbose)
 
-    print_verbose("Creating SignalP protein list", v_flag=verbose)
+    print_verbose("Compiling accessions with signal peptides", v_flag=verbose)
     # get list of all accessions with signal peptides from mature
     # sequences file
     accessions_with_sig_pep = []
@@ -240,7 +241,7 @@ def signalp(input_file,
     full_sequences_with_sigpep_fp = os.path.join(tmp_dir, 
                                                  'signalp_full_seqs_with_sigpep.fasta')
 
-
+    print_verbose("Assembling full sequences with signal peptides", v_flag=verbose)
     with open(full_sequences_with_sigpep_fp, 'w') as sigpep_seqs_fh:
         fasta_out = FastaIO.FastaWriter(sigpep_seqs_fh, wrap=None)
         fasta_out.write_header()
@@ -276,12 +277,12 @@ def tmhmm(mature_seqs_fp,
                                 mature_seqs_fp)
     
 
-    print_verbose("Running TMHMM on mature signalp sequences only", v_flag=verbose)
+    print_verbose("\n##Search for TM domains in mature seqs##", v_flag=verbose)
     tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
     tmhmm_output = tmhmm_output.decode('ascii').split('\n')
-    print_verbose("TMHMM complete", v_flag=verbose)
+    print_verbose("Search complete", v_flag=verbose)
 
-    print_verbose("Identifying sequences without tm regions.", v_flag=verbose)
+    print_verbose("Parsing results", v_flag=verbose)
     # Parse tmhmm raw output and write acc without tm domains
     # in non signal peptide sequence to output_file
     acc_without_tm_in_mature_seq = [line.split('\t')[0] \
@@ -317,14 +318,14 @@ def targetp(full_sequences_with_sigpep_fp,
     targetp = os.path.join(path, 'targetp')
     targetp_cmd = "{0} {1} {2}".format(targetp, targetp_flag, full_sequences_with_sigpep_fp)
 
-    print_verbose("Running TargetP on sequences "
-                  "identified by SignalP as having a sig_pep", v_flag=verbose)
+    print_verbose("\n##Identifying sequences with 'secreted' sigpeps##", 
+                  v_flag=verbose)
     targetp_output = subprocess.check_output(targetp_cmd.split())
     targetp_output = targetp_output.decode('ascii').split('\n')
-    print_verbose("TargetP complete", v_flag=verbose)
+    print_verbose("Search complete", v_flag=verbose)
 
 
-    print_verbose("Identifying sequences that are secreted", v_flag=verbose)
+    print_verbose("Parsing results", v_flag=verbose)
     # remove header and tail cruft in targetp output
     # and get those that have S as top predicted target 
     secreted_accessions = [line.split(' ')[0] \
@@ -359,13 +360,14 @@ def wolfpsort(formatted_fasta_fp,
     wolfpsort_cmd = "{0} {1} < {2}".format(wolfpsort, wps_opt, formatted_fasta_fp)
     raw_output = os.path.join(tmp_dir, 'wolfpsort_raw_output')
 
-    print_verbose("Running WoLFPSORT", v_flag=verbose)
+    print_verbose("\n##Identifying sequences belonging to 'extracellular' compartment##", 
+                  v_flag=verbose)
     wolfpsort_output = subprocess.check_output(wolfpsort_cmd, shell=True)
     wolfpsort_output = wolfpsort_output.decode('ascii').split('\n')
-    print_verbose("WoLFPSORT complete", v_flag=verbose)
+    print_verbose("Search complete", v_flag=verbose)
 
 
-    print_verbose("Parsing WoLFPSort output", v_flag=verbose)
+    print_verbose("Parsing results", v_flag=verbose)
     # Removes header from output 
     extracellular_accessions = [line.split(' ')[0] \
                                   for line in wolfpsort_output[1:-1] \
@@ -382,6 +384,8 @@ def secretome(accessions_with_sig_pep,
               conservative=True,
               verbose=False):
     
+    print_verbose("\n##Combining predictions##", v_flag=verbose)
+
     sig_peptides  = set(accessions_with_sig_pep)
     no_tm_domains = set(accesions_no_tm_in_mature_seq)
     secreted      = set(secreted_accessions)
@@ -426,6 +430,8 @@ def generate_output(formatted_fasta_fp,
                     run_name,
                     conservative=True,
                     verbose=False):
+
+    print_verbose("\n##Writing predicted secretome fasta file##", v_flag=verbose)
 
     in_handle = open(formatted_fasta_fp, 'r')
 

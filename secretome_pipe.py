@@ -5,16 +5,6 @@ import os
 import warnings
 import shutil
 
-"""
-This is a script desiged to take a multiple protien fasta as input and provide
-the predicted secretome as output. The program requires that signalp, tmhmm,
-targetp, chlorop, faSomeRecords, wolfpsort, and fasta_formatter be in the
-users PATH. See those programs documentation for installation instructions.
-Settings are for fungi change inputs for programs as necessary (targetp,
-and wolfpsort)
-"""
-
-
 def main(argv):
     """
     Main execution of the program in the proper order

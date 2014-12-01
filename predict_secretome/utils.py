@@ -379,6 +379,17 @@ def secretome(accessions_with_sig_pep,
               tmp_dir,
               conservative=True,
               verbose=False):
+    """
+    Combined predicted accessions
+    input: formatted_fasta_fp - formatted fasta file of all input seqs
+           tmp_dir - working temporary output directory
+           fungi_flag - boolean to use fungi settings or not for targetp
+           path - path to dependencies
+           verbose
+    output: extracellular_accessions - list of accessions with signalpeps
+                                        predicted to be extracellular
+
+    """
     
     print_verbose("\n##Combining predictions##", v_flag=verbose)
 

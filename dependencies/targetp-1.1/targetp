@@ -15,7 +15,7 @@
 # bug fixes and recompilations.
 #
 
-SYSTEM=`uname -s`
+SYSTEM="Linux"
 STARTDIR=`pwd`
 
 ### GENERAL SETTINGS, CUSTOMIZE +++++++++++++++++++++++++++++++++++++++++++++++

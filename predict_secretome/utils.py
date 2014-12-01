@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-
-import shutil
 import sys
 import subprocess
 import warnings
 import argparse
 import os
-import glob
 import hashlib
 from Bio import SeqIO
-from Bio.SeqIO import FastaIO
 
 """
 Finlay Maguire 2014
@@ -157,7 +153,7 @@ def format_fasta(input_file_fp,
 
     # SeqIO doesn't expose the wrap attribute so need to call FastaIO directly
     # to use single line format
-    fasta_out = FastaIO.FastaWriter(formatted_out_fh, wrap=None)
+    fasta_out = SeqIO.FastaIO.FastaWriter(formatted_out_fh, wrap=None)
     fasta_out.write_header()
     rename_mappings = {}
 
@@ -243,7 +239,7 @@ def signalp(input_file,
 
     print_verbose("Assembling full sequences with signal peptides", v_flag=verbose)
     with open(full_sequences_with_sigpep_fp, 'w') as sigpep_seqs_fh:
-        fasta_out = FastaIO.FastaWriter(sigpep_seqs_fh, wrap=None)
+        fasta_out = SeqIO.FastaIO.FastaWriter(sigpep_seqs_fh, wrap=None)
         fasta_out.write_header()
         for record in SeqIO.parse(input_file, 'fasta'):
             if record.description in accessions_with_sig_pep:
@@ -443,7 +439,7 @@ def generate_output(formatted_fasta_fp,
     output = "{0}_{1}_predicted_secretome.fasta".format(run_name, out_flag)
     out_handle = open(output, 'w')
 
-    fasta_out = FastaIO.FastaWriter(out_handle, wrap=None)
+    fasta_out = SeqIO.FastaIO.FastaWriter(out_handle, wrap=None)
     fasta_out.write_header()
 
     print_verbose("Retreving Secretome fasta", v_flag=verbose)

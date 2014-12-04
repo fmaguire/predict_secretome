@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import unittest
 import os
+import shutil
 import subprocess
 import predict_secretome.utils as utils
 import warnings
@@ -107,10 +108,15 @@ class testDependencies(coreTestingClass):
 
     def test_targetp(self):
 
+        username = os.getlogin()
+        home_targetp = '/home/{0}/targetp-1.1'.format(username)
+        shutil.copytree('dependencies/targetp-1.1', home_targetp)
+
         self.run_dependencies_and_check_output('expected_targetp_output',
                                                'actual_targetp_output',
                                                '{0} {1}',
                                                'targetp')
+        shutil.rmtree(home_targetp)
 
 
     def test_wolfpsort(self):

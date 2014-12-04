@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import subprocess
+import shutil
 import warnings
 import argparse
 import os
@@ -9,10 +10,10 @@ from Bio import SeqIO
 
 """
 Finlay Maguire 2014
-Adapted from a similar script by Ian Misner 
+Adapted from a similar script by Ian Misner
 
-Input multi-protein fasta and generate a conservative or permissive 
-predicted secretome as output.  
+Input multi-protein fasta and generate a conservative or permissive
+predicted secretome as output.
 """
 
 def get_parser():
@@ -136,7 +137,7 @@ def format_fasta(input_file_fp,
     input: input_file - filename
            output_file - filename
            path - path to dependencies bins
-           verbose 
+           verbose
     output: rename_mappings - a dict of {new_acc: original_acc}
     """
 
@@ -147,7 +148,7 @@ def format_fasta(input_file_fp,
 
     # as some dependencies (tmhmm) don't support accessions over 20 chars
     # replace accessions with a 19-char truncated hash of original accession
-    # keeping track in a dict where key is the hash and val is original accession 
+    # keeping track in a dict where key is the hash and val is original accession
     raw_fasta_in_fh = open(input_file_fp, "r")
     formatted_out_fh = open(formatted_fasta_fp, 'w')
 
@@ -161,10 +162,10 @@ def format_fasta(input_file_fp,
         truncated_md5 = hashlib.md5(\
               record.description.encode('utf-8')).hexdigest()[:19]
               # hash collision calculation fun time:
-              # md5 is 128bits (hexdigest 32 chars) so a 19 character truncation 
-              # is 76 bits.  Therefore can calculate collision rate using birthday 
-              # attack 
-              #  
+              # md5 is 128bits (hexdigest 32 chars) so a 19 character truncation
+              # is 76 bits.  Therefore can calculate collision rate using birthday
+              # attack
+              #
 
         rename_mappings.update({truncated_md5: record.description})
 
@@ -173,7 +174,7 @@ def format_fasta(input_file_fp,
         record.description=''
 
         fasta_out.write_record(record)
-   
+
     fasta_out.write_footer()
 
     raw_fasta_in_fh.close()
@@ -196,9 +197,9 @@ def signalp(input_file,
            tmp_dir - path to temporary intermiedate output
            path - path to dependency bins
            verbose
-    output: mature_seqs_fp - filename containg mature seqs (sigpeps cleaved) 
+    output: mature_seqs_fp - filename containg mature seqs (sigpeps cleaved)
             accessions_with_sig_pep - list of accessions with sigpeps
-            full_sequences_with_sigpep_fp - filname containing full seqs of seqs 
+            full_sequences_with_sigpep_fp - filname containing full seqs of seqs
                                             id'd as having a sigpep
     """
 
@@ -231,10 +232,10 @@ def signalp(input_file,
                 strip_line = line.lstrip('>')
                 accessions_with_sig_pep.append(strip_line.split(' ; ')[0])
 
- 
+
     # use this list to get full sequences (i.e. not mature) with signal peptides from
     # formatted input sequences
-    full_sequences_with_sigpep_fp = os.path.join(tmp_dir, 
+    full_sequences_with_sigpep_fp = os.path.join(tmp_dir,
                                                  'signalp_full_seqs_with_sigpep.fasta')
 
     print_verbose("Assembling full sequences with signal peptides", v_flag=verbose)
@@ -257,12 +258,12 @@ def tmhmm(mature_seqs_fp,
           verbose=False):
     """
     Run tmhmm on the mature sequences from signalp to ensure they
-    don't have transmembrane domains outwith of their signal peptide 
+    don't have transmembrane domains outwith of their signal peptide
     input: mature_seqs_fp - fasta file without signal peptides
            tmp_dir - working temporary output directory
            path - path to dependencies
            verbose
-    output: acc_without_tm_in_mature_seq - list of accessions 
+    output: acc_without_tm_in_mature_seq - list of accessions
                                            without TM domains
                                            in their mature
                                            sequences
@@ -271,7 +272,7 @@ def tmhmm(mature_seqs_fp,
     tmhmm = os.path.join(path, 'tmhmm')
     tmhmm_cmd= "{0} {1}".format(tmhmm,
                                 mature_seqs_fp)
-    
+
 
     print_verbose("\n##Search for TM domains in mature seqs##", v_flag=verbose)
     tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
@@ -294,7 +295,7 @@ def targetp(full_sequences_with_sigpep_fp,
             plant=False,
             verbose=False):
     """
-    Runs targetp on full seqs of those identified as having 
+    Runs targetp on full seqs of those identified as having
     signal peptides by signalp to identify those designated
     as targeted 'secreted'
     input: mature_seqs_fp - fasta file without signal peptides
@@ -311,19 +312,27 @@ def targetp(full_sequences_with_sigpep_fp,
     else:
         targetp_flag = "-N"
 
+
+    # the fortran 'How' ANN classifier dependency bundled with targetp
+    # can't handle paths longer than 80 chars so as a hack fix I'm creating
+    # a symlink to /home/user and removing it after execution
+
+    username = os.getlogin()
+    home_targetp = '/home/{0}/targetp-1.1'.format(username)
+    shutil.copytree('dependencies/targetp-1.1', home_targetp)
     targetp = os.path.join(path, 'targetp')
     targetp_cmd = "{0} {1} {2}".format(targetp, targetp_flag, full_sequences_with_sigpep_fp)
 
-    print_verbose("\n##Identifying sequences with 'secreted' sigpeps##", 
+    print_verbose("\n##Identifying sequences with 'secreted' sigpeps##",
                   v_flag=verbose)
     targetp_output = subprocess.check_output(targetp_cmd.split())
     targetp_output = targetp_output.decode('ascii').split('\n')
     print_verbose("Search complete", v_flag=verbose)
-
+    shutil.rmtree(home_targetp)
 
     print_verbose("Parsing results", v_flag=verbose)
     # remove header and tail cruft in targetp output
-    # and get those that have S as top predicted target 
+    # and get those that have S as top predicted target
     secreted_accessions = [line.split(' ')[0] \
                            for line in targetp_output[8:-3] if "S" in line]
 
@@ -356,7 +365,7 @@ def wolfpsort(formatted_fasta_fp,
     wolfpsort_cmd = "{0} {1} < {2}".format(wolfpsort, wps_opt, formatted_fasta_fp)
     raw_output = os.path.join(tmp_dir, 'wolfpsort_raw_output')
 
-    print_verbose("\n##Identifying sequences belonging to 'extracellular' compartment##", 
+    print_verbose("\n##Identifying sequences belonging to 'extracellular' compartment##",
                   v_flag=verbose)
     wolfpsort_output = subprocess.check_output(wolfpsort_cmd, shell=True)
     wolfpsort_output = wolfpsort_output.decode('ascii').split('\n')
@@ -364,7 +373,7 @@ def wolfpsort(formatted_fasta_fp,
 
 
     print_verbose("Parsing results", v_flag=verbose)
-    # Removes header from output 
+    # Removes header from output
     extracellular_accessions = [line.split(' ')[0] \
                                   for line in wolfpsort_output[1:-1] \
                                        if "extr" in line.split()[1]]
@@ -390,7 +399,7 @@ def secretome(accessions_with_sig_pep,
                                         predicted to be extracellular
 
     """
-    
+
     print_verbose("\n##Combining predictions##", v_flag=verbose)
 
     sig_peptides  = set(accessions_with_sig_pep)
@@ -411,28 +420,28 @@ def secretome(accessions_with_sig_pep,
     # categories
     if conservative:
         out_flag = 'conservative'
-        predicted_acc_list = set.intersection(sig_peptides, 
-                                              no_tm_domains, 
-                                              secreted, 
+        predicted_acc_list = set.intersection(sig_peptides,
+                                              no_tm_domains,
+                                              secreted,
                                               extracellular)
     else:
         out_flag = 'permissive'
         # maybe remove no_tm_domains from this
         # as plenty of things don't have tm domains
         # that aren't secreted
-        predicted_acc_list = set.union(sig_peptides, 
-                                       no_tm_domains, 
-                                       secreted, 
+        predicted_acc_list = set.union(sig_peptides,
+                                       no_tm_domains,
+                                       secreted,
                                        extracellular)
 
-    if len(predicted_acc_list) is 0:  
+    if len(predicted_acc_list) is 0:
         warnings.warn("No secreted proteins found using {0} setting".format(out_flag))
 
     return predicted_acc_list
 
 
 def generate_output(formatted_fasta_fp,
-                    predicted_secretome_accessions, 
+                    predicted_secretome_accessions,
                     rename_mappings,
                     run_name,
                     conservative=True,

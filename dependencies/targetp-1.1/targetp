@@ -20,8 +20,8 @@ STARTDIR=`pwd`
 
 ### GENERAL SETTINGS, CUSTOMIZE +++++++++++++++++++++++++++++++++++++++++++++++
 # Substitute your chosen location for TargetP software:
-TARGETP=${PWD}/dependencies/targetp-1.1
-#/home/fin/predict_secretome/dependencies/targetp-1.1
+TARGETP=~/targetp-1.1
+#${PWD}/dependencies/targetp-1.1
 
 
 # determine where to store temporary files

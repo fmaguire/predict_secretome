@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+from __future__ import print_function
 import unittest
 import os
 import shutil
@@ -267,10 +268,6 @@ class testDependencyParsing(coreTestingClass):
         self.test_fas = os.path.join(self.tmp_dir, 'test.fas')
 
 
-        #self.expected_seqs_with_sigpep_removed = os.path.join(self.tmp_dir, '')
-
-
-
     def test_tmhmm_func(self):
         expected_acc_without_tm_domains = os.path.join(self.tmp_dir,
                                                       'test_without_tm_domains.txt')
@@ -312,6 +309,41 @@ class testDependencyParsing(coreTestingClass):
         self.compare_files(actual_mature_seqs_fp, expected_mature_seq_fp)
 
 
+    def test_pipe_aborts_in_signalp_step_when_no_sigpeps(self):
+
+        test_fas_no_sigpep = os.path.join(self.tmp_dir, 'test_no_sigpep.fas')
+        tmp_dir_to_test_removal = os.path.join(self.tmp_dir, 'intermediate_tmp')
+        os.mkdir(tmp_dir_to_test_removal)
+
+        with self.assertRaises(SystemExit):
+            a,b,c = utils.signalp(test_fas_no_sigpep, tmp_dir_to_test_removal, '', '')
+
+        self.assertFalse(os.path.exists(tmp_dir_to_test_removal))
+
+
+    def test_detect_and_output_transporters_via_signalp_when_no_sigpeps(self):
+
+        test_fas_no_sigpep = os.path.join(self.tmp_dir, 'test_no_sigpep.fas')
+        tmp_dir_to_test_removal = os.path.join(self.tmp_dir, 'intermediate_tmp_2')
+        os.mkdir(tmp_dir_to_test_removal)
+        rename_mappings = {'KGQ972831Candidaalbicans': 'KGQ972831Candidaalbicans'}
+
+        with self.assertRaises(SystemExit):
+            a,b,c = utils.signalp(test_fas_no_sigpep,
+                                  tmp_dir_to_test_removal,
+                                  rename_mappings,
+                                  'actual',
+                                  trans=2)
+        self.assertFalse(os.path.exists(tmp_dir_to_test_removal))
+
+        expected_transporters = os.path.join(self.tmp_dir,
+                                            'expected_no_sigpep_transporters.fas')
+
+        actual_transporters = 'actual_predicted_transporters.fas'
+        self.assertTrue(actual_transporters)
+        self.compare_files(actual_transporters, expected_transporters)
+
+
     def test_wolfpsort_func(self):
 
         expected_extracellular_accessions = os.path.join(self.tmp_dir,
@@ -342,4 +374,4 @@ class testDependencyParsing(coreTestingClass):
 
 
 if __name__=='__main__':
-    unittest.main()
+    unittest.main(buffer=True)

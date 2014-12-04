@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+from __future__ import print_function
 import sys
 import subprocess
 import shutil
@@ -10,7 +11,6 @@ from Bio import SeqIO
 
 """
 Finlay Maguire 2014
-Adapted from a similar script by Ian Misner
 
 Input multi-protein fasta and generate a conservative or permissive
 predicted secretome as output.
@@ -383,7 +383,6 @@ def detect_and_output_transporters(all_sequences_fp,
         if predhel >= tm_threshold:
             putative_transporter_acc.append(line[0])
 
-    print(putative_transporter_acc)
     if putative_transporter_acc:
         transporter_out_fh = open(run_name+'_predicted_transporters.fas', 'w')
         transporter_out = SeqIO.FastaIO.FastaWriter(transporter_out_fh)

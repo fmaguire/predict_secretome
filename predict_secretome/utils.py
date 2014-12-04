@@ -51,7 +51,6 @@ def get_parser():
 
     parser.add_argument('--verbose', '-v',
                         action='store_true',
-                        dest='verbose',
                         default=False,
                         help='Print verbose output '
                              '(default: %(default)s)')
@@ -62,6 +61,14 @@ def get_parser():
                        default=False,
                        help='Get permissive secretome prediction '
                             '(default: %(default)s)')
+
+    parser.add_argument('--transporter_threshold', '-t',
+                        action='store',
+                        dest='trans',
+                        default=0,
+                        type=int,
+                        help='Minimum number of tm domains in mature sequence'
+                             'required to consider a protein as a transporter')
 
     return parser
 
@@ -188,6 +195,9 @@ def format_fasta(input_file_fp,
 
 def signalp(input_file,
             tmp_dir,
+            rename_mappings,
+            run_name,
+            trans=0,
             path='dependencies/bin',
             verbose=False):
     """
@@ -218,9 +228,27 @@ def signalp(input_file,
     # trimmed)
 
     print_verbose("\n##Detecing signal peptides##", v_flag=verbose)
-    with open(os.devnull) as null:
-        sigp_retcode = subprocess.call(sigp_cmd.split(), stdout=null)
+    sigp_proc = subprocess.Popen(sigp_cmd.split(),
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+    stdout, stderr = sigp_proc.communicate()
+
     print_verbose("Search Complete", v_flag=verbose)
+
+    if '# No sequences predicted with a signal peptide' in stderr.decode('ascii'):
+        print("\nNo signal peptides detected therefore no secretome is predicted\n")
+        # if there are no signal peptides can still calculate and return tm if specified
+        if trans:
+            detect_and_output_transporters(input_file,
+                                           rename_mappings,
+                                           tmp_dir,
+                                           run_name,
+                                           path=path,
+                                           verbose=verbose,
+                                           tm_threshold=trans)
+        shutil.rmtree(tmp_dir)
+        sys.exit()
+
 
     print_verbose("Compiling accessions with signal peptides", v_flag=verbose)
     # get list of all accessions with signal peptides from mature
@@ -285,8 +313,93 @@ def tmhmm(mature_seqs_fp,
     acc_without_tm_in_mature_seq = [line.split('\t')[0] \
                                       for line in tmhmm_output \
                                         if "\tPredHel=0\t" in line]
-
     return acc_without_tm_in_mature_seq
+
+
+def detect_and_output_transporters(all_sequences_fp,
+                                   rename_mappings,
+                                   tmp_dir,
+                                   run_name,
+                                   path='dependencies/bin',
+                                   mature_seqs=None,
+                                   verbose=False,
+                                   tm_threshold=2):
+    """
+    Find sequences which num tm domains > tm_threshold in
+    a) mature sequences if they have a signal peptide
+    b) full sequences for all other proteins
+    input: formatted_fasta_fp- all fasta sequences
+           rename_mappings- mappings to original seq names
+           mature_sequences_fp- the mature sequences of those seqs with sigpeps
+           tmp_dir- temporary file output directory
+           tm_threshold- integer minimum number of tm domains to search for
+    output: None
+    """
+    # need to combine sequences that have signalpeptides and thus mature seqs
+    # with the full sequences of all the sequences without them
+    if mature_seqs:
+
+        all_input_seqs_fh = open(all_sequences_fp, 'r')
+
+        with open(mature_seqs, 'r') as mature_seqs_fh:
+            mature_seqs = {record.id: record for \
+                            record in SeqIO.parse(mature_seqs_fh, 'fasta')}
+
+        transporter_search_seqs_fp = os.path.join(tmp_dir,
+                                                  'mature_if_sigpep_full_otherwise.fas')
+
+        transporter_search_seqs_fh = open(transporter_search_seqs_fp, 'w')
+
+        # if record is in the mature seqs (i.e. has signal peptide) then write
+        # that otherwise write the full sequence
+        for record in SeqIO.parse(all_input_seqs_fh, 'fasta'):
+            if record.id in mature_seqs.keys():
+                SeqIO.write(mature_seqs[record.id] , transporter_search_seqs_fh, 'fasta')
+            else:
+                SeqIO.write(record, transporter_search_seqs_fh, 'fasta')
+
+        all_input_seqs_fh.close()
+        transporter_search_seqs_fh.close()
+    else:
+        transporter_search_seqs_fp = all_sequences_fp
+
+
+    tmhmm = os.path.join(path, 'tmhmm')
+    tmhmm_cmd= "{0} {1}".format(tmhmm,
+                                transporter_search_seqs_fp)
+
+    print_verbose("\n##Search for Putative Transporters##", v_flag=verbose)
+    tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
+    tmhmm_output = tmhmm_output.decode('ascii').split('\n')
+    print_verbose("Search complete", v_flag=verbose)
+
+    print_verbose("Parsing results", v_flag=verbose)
+    # Parse tmhmm raw output and write acc with more than
+    # in non signal peptide sequence to output_file
+    putative_transporter_acc = []
+    for line in tmhmm_output[:-1]:
+        line = line.split('\t')
+        predhel = int(line[4].lstrip('PredHel='))
+        if predhel >= tm_threshold:
+            putative_transporter_acc.append(line[0])
+
+    print(putative_transporter_acc)
+    if putative_transporter_acc:
+        transporter_out_fh = open(run_name+'_predicted_transporters.fas', 'w')
+        transporter_out = SeqIO.FastaIO.FastaWriter(transporter_out_fh)
+        transporter_out.write_header()
+
+        all_input_seqs_fh = open(all_sequences_fp, 'r')
+        for record in SeqIO.parse(all_input_seqs_fh, 'fasta'):
+            if record.id in putative_transporter_acc:
+                record.id = rename_mappings[record.id]
+                record.description=''
+                record.name=''
+                transporter_out.write_record(record)
+
+        transporter_out.write_footer()
+        transporter_out_fh.close()
+        all_input_seqs_fh.close()
 
 
 def targetp(full_sequences_with_sigpep_fp,
@@ -474,3 +587,6 @@ def generate_output(formatted_fasta_fp,
     fasta_out.write_footer()
     out_handle.close()
     print_verbose("Secretome identification Complete", v_flag=verbose)
+
+
+

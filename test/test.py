@@ -303,14 +303,13 @@ class testDependencyParsing(coreTestingClass):
 
         actual_mature_seqs_fp, \
         actual_accessions_with_sig_pep, \
-        actual_full_sequences_with_sigpep_fp = utils.signalp(self.test_fas, '')
+        actual_full_sequences_with_sigpep_fp = utils.signalp(self.test_fas, '', '', '')
 
         self.assertEqual(actual_accessions_with_sig_pep, expected_accessions_with_sig_pep)
 
         self.compare_files(actual_full_sequences_with_sigpep_fp, expected_full_sequences_with_sigpep_fp)
 
         self.compare_files(actual_mature_seqs_fp, expected_mature_seq_fp)
-
 
 
     def test_wolfpsort_func(self):

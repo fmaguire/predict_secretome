@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''
+Program to execture secretome prediction pipe
+'''
 from __future__ import print_function
 import predict_secretome.utils as utils
 import os
@@ -11,10 +14,8 @@ def main(argv):
     input: argv from arg parser
     """
 
-    bin_path = os.path.abspath(os.path.join('dependencies','bin'))
 
-    utils.check_dependencies(path=bin_path,
-                             check_run=argv.check,
+    utils.check_dependencies(check_run=argv.check,
                              verbose=argv.verbose)
 
     input_file = argv.input_file
@@ -31,7 +32,8 @@ def main(argv):
         os.makedirs(tmp_dir)
     except OSError:
         if os.path.exists(tmp_dir):
-            warnings.warn('\n\nintermediate output dir: {0} exists overwriting contents\n'.format(tmp_dir))
+            warnings.warn('\n\nintermediate output dir: {0} exists '
+                          'overwriting contents\n'.format(tmp_dir))
         else:
             raise OSError('Error creating intermediate '
                           'output dir: {0}'.format(tmp_dir))
@@ -49,7 +51,6 @@ def main(argv):
                                                   rename_mappings,
                                                   run_name,
                                                   trans=argv.trans,
-                                                  path=bin_path,
                                                   verbose=argv.verbose)
 
     if argv.trans:
@@ -57,29 +58,21 @@ def main(argv):
                                              rename_mappings,
                                              tmp_dir,
                                              run_name,
-                                             path=bin_path,
                                              mature_seqs=mature_seqs_fp,
                                              verbose=argv.verbose,
                                              tm_threshold=argv.trans)
 
 
     accesions_no_tm_in_mature_seq = utils.tmhmm(mature_seqs_fp,
-                                               tmp_dir,
-                                               path=bin_path,
-                                               verbose=argv.verbose)
+                                                verbose=argv.verbose)
 
     secreted_accessions = utils.targetp(full_sequences_with_sigpep_fp,
-                                        tmp_dir,
                                         plant=False,
-                                        path=bin_path,
                                         verbose=argv.verbose)
 
 
     extracellular_accessions = utils.wolfpsort(formatted_fasta_fp,
-                                               tmp_dir,
-                                               path=bin_path,
                                                verbose=argv.verbose)
-
 
     if argv.permissive:
         conservative_flag = False
@@ -90,24 +83,23 @@ def main(argv):
                                            accesions_no_tm_in_mature_seq,
                                            secreted_accessions,
                                            extracellular_accessions,
-                                           tmp_dir,
                                            conservative=conservative_flag,
                                            verbose=argv.verbose)
 
-    predicted_secretome = utils.generate_output(formatted_fasta_fp,
-                                                secretome_accessions,
-                                                rename_mappings,
-                                                run_name,
-                                                conservative=conservative_flag,
-                                                verbose=argv.verbose)
+    utils.generate_output(formatted_fasta_fp,
+                          secretome_accessions,
+                          rename_mappings,
+                          run_name,
+                          conservative=conservative_flag,
+                          verbose=argv.verbose)
 
 
     if not argv.nocleanup:
         shutil.rmtree(tmp_dir)
 
-if __name__=='__main__':
+if __name__ == '__main__':
 
-    parser = utils.get_parser()
-    argv = parser.parse_args()
+    PARSER = utils.get_parser()
+    ARGS = PARSER.parse_args()
 
-    main(argv)
+    main(ARGS)

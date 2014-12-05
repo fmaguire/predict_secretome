@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+"""
+Input multi-protein fasta and generate a conservative or permissive
+predicted secretome as output.
+"""
 from __future__ import print_function
 import sys
 import subprocess
@@ -9,14 +13,11 @@ import os
 import hashlib
 from Bio import SeqIO
 
-"""
-Finlay Maguire 2014
-
-Input multi-protein fasta and generate a conservative or permissive
-predicted secretome as output.
-"""
 
 def get_parser():
+    """
+    Generate parser obj with required options
+    """
 
     parser = argparse.ArgumentParser(description='Take in a fasta and '
                                                  'identify the predicted '
@@ -56,11 +57,11 @@ def get_parser():
                              '(default: %(default)s)')
 
     parser.add_argument('--permissive', '-p',
-                       action='store_true',
-                       dest='permissive',
-                       default=False,
-                       help='Get permissive secretome prediction '
-                            '(default: %(default)s)')
+                        action='store_true',
+                        dest='permissive',
+                        default=False,
+                        help='Get permissive secretome prediction '
+                             '(default: %(default)s)')
 
     parser.add_argument('--transporter_threshold', '-t',
                         action='store',
@@ -117,7 +118,7 @@ def check_dependencies(path='dependencies/bin',
     check_execs = {dependency: which(path, dependency) for dependency in\
                         dependency_list}
 
-    print_verbose("\n##Checking Depdencies##",v_flag=verbose)
+    print_verbose("\n##Checking Depdencies##", v_flag=verbose)
     for dependency in check_execs:
         print_verbose("{0} is present? {1}".format(dependency,
                                                    check_execs[dependency]),
@@ -176,9 +177,9 @@ def format_fasta(input_file_fp,
 
         rename_mappings.update({truncated_md5: record.description})
 
-        record.id=truncated_md5
-        record.name=''
-        record.description=''
+        record.id = truncated_md5
+        record.name = ''
+        record.description = ''
 
         fasta_out.write_record(record)
 
@@ -218,9 +219,9 @@ def signalp(input_file,
     mature_seqs_fp = os.path.join(tmp_dir, 'signalp_mature_seqs.fasta')
 
     sigp = os.path.join(path, 'signalp')
-    sigp_cmd= "{0} -t euk -f short -m {1} {2}".format(sigp,
-                                                      mature_seqs_fp,
-                                                      input_file)
+    sigp_cmd = "{0} -t euk -f short -m {1} {2}".format(sigp,
+                                                       mature_seqs_fp,
+                                                       input_file)
 
 
     # we only care about the mature sequences output as they are the sequences
@@ -231,7 +232,7 @@ def signalp(input_file,
     sigp_proc = subprocess.Popen(sigp_cmd.split(),
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
-    stdout, stderr = sigp_proc.communicate()
+    _, stderr = sigp_proc.communicate()
 
     print_verbose("Search Complete", v_flag=verbose)
 
@@ -254,8 +255,8 @@ def signalp(input_file,
     # get list of all accessions with signal peptides from mature
     # sequences file
     accessions_with_sig_pep = []
-    with open(mature_seqs_fp, 'r') as fh:
-        for line in fh.readlines():
+    with open(mature_seqs_fp, 'r') as mature_fh:
+        for line in mature_fh.readlines():
             if line.startswith('>'):
                 strip_line = line.lstrip('>')
                 accessions_with_sig_pep.append(strip_line.split(' ; ')[0])
@@ -281,7 +282,6 @@ def signalp(input_file,
 
 
 def tmhmm(mature_seqs_fp,
-          tmp_dir,
           path='dependencies/bin',
           verbose=False):
     """
@@ -297,9 +297,9 @@ def tmhmm(mature_seqs_fp,
                                            sequences
     """
 
-    tmhmm = os.path.join(path, 'tmhmm')
-    tmhmm_cmd= "{0} {1}".format(tmhmm,
-                                mature_seqs_fp)
+    tmhmm_fp = os.path.join(path, 'tmhmm')
+    tmhmm_cmd = "{0} {1}".format(tmhmm_fp,
+                                 mature_seqs_fp)
 
 
     print_verbose("\n##Search for TM domains in mature seqs##", v_flag=verbose)
@@ -354,7 +354,7 @@ def detect_and_output_transporters(all_sequences_fp,
         # that otherwise write the full sequence
         for record in SeqIO.parse(all_input_seqs_fh, 'fasta'):
             if record.id in mature_seqs.keys():
-                SeqIO.write(mature_seqs[record.id] , transporter_search_seqs_fh, 'fasta')
+                SeqIO.write(mature_seqs[record.id], transporter_search_seqs_fh, 'fasta')
             else:
                 SeqIO.write(record, transporter_search_seqs_fh, 'fasta')
 
@@ -364,9 +364,9 @@ def detect_and_output_transporters(all_sequences_fp,
         transporter_search_seqs_fp = all_sequences_fp
 
 
-    tmhmm = os.path.join(path, 'tmhmm')
-    tmhmm_cmd= "{0} {1}".format(tmhmm,
-                                transporter_search_seqs_fp)
+    tmhmm_fp = os.path.join(path, 'tmhmm')
+    tmhmm_cmd = "{0} {1}".format(tmhmm_fp,
+                                 transporter_search_seqs_fp)
 
     print_verbose("\n##Search for Putative Transporters##", v_flag=verbose)
     tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
@@ -392,8 +392,8 @@ def detect_and_output_transporters(all_sequences_fp,
         for record in SeqIO.parse(all_input_seqs_fh, 'fasta'):
             if record.id in putative_transporter_acc:
                 record.id = rename_mappings[record.id]
-                record.description=''
-                record.name=''
+                record.description = ''
+                record.name = ''
                 transporter_out.write_record(record)
 
         transporter_out.write_footer()
@@ -402,7 +402,6 @@ def detect_and_output_transporters(all_sequences_fp,
 
 
 def targetp(full_sequences_with_sigpep_fp,
-            tmp_dir,
             path='dependencies/bin',
             plant=False,
             verbose=False):
@@ -415,15 +414,15 @@ def targetp(full_sequences_with_sigpep_fp,
            plant - boolean to use plant settings or not for targetp
            path - path to dependencies
            verbose
-    output: secreted_accessions - list of accessions with signalpeps
+    /utput: secreted_accessions - list of accessions with signalpeps
                                   predicted to be secreted
 
     """
+
     if plant:
         targetp_flag = "-P"
     else:
         targetp_flag = "-N"
-
 
     # the fortran 'How' ANN classifier dependency bundled with targetp
     # can't handle paths longer than 80 chars so as a hack fix I'm creating
@@ -432,8 +431,11 @@ def targetp(full_sequences_with_sigpep_fp,
     username = os.getlogin()
     home_targetp = '/home/{0}/targetp-1.1'.format(username)
     shutil.copytree('dependencies/targetp-1.1', home_targetp)
-    targetp = os.path.join(path, 'targetp')
-    targetp_cmd = "{0} {1} {2}".format(targetp, targetp_flag, full_sequences_with_sigpep_fp)
+
+    targetp_path = os.path.join(path, 'targetp')
+    targetp_cmd = "{0} {1} {2}".format(targetp_path,
+                                       targetp_flag,
+                                       full_sequences_with_sigpep_fp)
 
     print_verbose("\n##Identifying sequences with 'secreted' sigpeps##",
                   v_flag=verbose)
@@ -452,8 +454,7 @@ def targetp(full_sequences_with_sigpep_fp,
 
 
 def wolfpsort(formatted_fasta_fp,
-              tmp_dir,
-              path='dependencies/bin',
+              path="dependencies/bin",
               fungi_flag=True,
               verbose=False):
     """
@@ -469,13 +470,12 @@ def wolfpsort(formatted_fasta_fp,
 
     """
 
-    wolfpsort = os.path.join(path, 'runWolfPsortSummary')
+    wolfpsort_path = os.path.join(path, 'runWolfPsortSummary')
 
     if fungi_flag:
         wps_opt = "fungi"
 
-    wolfpsort_cmd = "{0} {1} < {2}".format(wolfpsort, wps_opt, formatted_fasta_fp)
-    raw_output = os.path.join(tmp_dir, 'wolfpsort_raw_output')
+    wolfpsort_cmd = "{0} {1} < {2}".format(wolfpsort_path, wps_opt, formatted_fasta_fp)
 
     print_verbose("\n##Identifying sequences belonging to 'extracellular' compartment##",
                   v_flag=verbose)
@@ -497,13 +497,11 @@ def secretome(accessions_with_sig_pep,
               accesions_no_tm_in_mature_seq,
               secreted_accessions,
               extracellular_accessions,
-              tmp_dir,
               conservative=True,
               verbose=False):
     """
     Combined predicted accessions
     input: formatted_fasta_fp - formatted fasta file of all input seqs
-           tmp_dir - working temporary output directory
            fungi_flag - boolean to use fungi settings or not for targetp
            path - path to dependencies
            verbose
@@ -514,9 +512,9 @@ def secretome(accessions_with_sig_pep,
 
     print_verbose("\n##Combining predictions##", v_flag=verbose)
 
-    sig_peptides  = set(accessions_with_sig_pep)
+    sig_peptides = set(accessions_with_sig_pep)
     no_tm_domains = set(accesions_no_tm_in_mature_seq)
-    secreted      = set(secreted_accessions)
+    secreted = set(secreted_accessions)
     extracellular = set(extracellular_accessions)
 
 
@@ -558,6 +556,9 @@ def generate_output(formatted_fasta_fp,
                     run_name,
                     conservative=True,
                     verbose=False):
+    """
+    Generate predicted secretome output with original accessions
+    """
 
     print_verbose("\n##Writing predicted secretome fasta file##", v_flag=verbose)
 
@@ -577,9 +578,9 @@ def generate_output(formatted_fasta_fp,
     print_verbose("Retreving Secretome fasta", v_flag=verbose)
     for record in SeqIO.parse(in_handle, 'fasta'):
         if record.description in predicted_secretome_accessions:
-            record.id=rename_mappings[record.id]
-            record.name=''
-            record.description=''
+            record.id = rename_mappings[record.id]
+            record.name = ''
+            record.description = ''
             fasta_out.write_record(record)
 
     in_handle.close()

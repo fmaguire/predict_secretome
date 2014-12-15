@@ -52,4 +52,4 @@ Requirements:
 
 Run `pip install -r requirements` to ensure dependencies are installed.
 
-You can then run tests to ensure the script and all the bundled dependencies work correctly by invoking `python -m unittest` from the main directory.   
+You can then run tests to ensure the script and all the bundled dependencies work correctly by invoking `./test/test.py` from the main directory.   

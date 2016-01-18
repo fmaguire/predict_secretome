@@ -1,4 +1,5 @@
 import os
+from predict_secretome import utils
 
 
 class predictSecretome(object):
@@ -15,14 +16,11 @@ class predictSecretome(object):
         self.verbose = argv.verbose
         self.check_run = argv.check
 
-        self.verbose = argv.check
-
+        # run check dependencies util
         utils.check_dependencies(check_run=self.check,
                                  verbose=self.verbose)
 
-
         self.input_file = argv.input_file
-
 
         if not argv.run_name:
             basename = os.path.basename(self.input_file)

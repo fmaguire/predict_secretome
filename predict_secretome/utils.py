@@ -94,7 +94,7 @@ def print_verbose(string, v_flag=False):
         print(string)
 
 
-def check_dependencies(path='dependencies/bin',
+def check_dependencies(path='predict_secretome/dependencies/bin',
                        check_run=False,
                        verbose=False):
     """

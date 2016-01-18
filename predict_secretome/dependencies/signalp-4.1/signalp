@@ -14,12 +14,12 @@
 my $dir = getcwd;
 
 BEGIN {
-    $ENV{SIGNALP} = "dependencies/signalp-4.1";
+    $ENV{SIGNALP} = "predict_secretome/dependencies/signalp-4.1";
 }
 print $dir
 
 # determine where to store temporary files (must be writable to all users)
-my $outputDir = "dependencies/signalp-4.1/tmp";
+my $outputDir = "predict_secretome/dependencies/signalp-4.1/tmp";
 
 # max number of sequences per run (any number can be handled)
 my $MAX_ALLOWED_ENTRIES=10000;

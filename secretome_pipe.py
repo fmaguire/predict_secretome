@@ -1,5 +1,5 @@
-from secretome_pipe import core
-from secretome_pipe import utils
+from predict_secretome import core
+from predict_secretome import utils
 
 if __name__ == '__main__':
 

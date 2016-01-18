@@ -17,8 +17,9 @@ setup(
     description = ("A script generate conservative and permissive secretome "
                    "predictions from a protein fasta"),
     license = "MIT",
+    setup_requires=['pytest-runner'],
+    tests_require=['pytest', 'biopython'],
     keywords = "bioinformatics secretome prediction",
     url = "https://github.com/fmaguire/predict_secretome",
-    packages=['eDicer', 'test'],
     long_description=read('README.md'),
 )

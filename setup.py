@@ -15,7 +15,7 @@ setup(
     author = "Finlay Maguire",
     author_email = "root@finlaymagui.re",
     description = ("A script generate conservative and permissive secretome "
-                   "predictions from a protein fasta")
+                   "predictions from a protein fasta"),
     license = "MIT",
     keywords = "bioinformatics secretome prediction",
     url = "https://github.com/fmaguire/predict_secretome",

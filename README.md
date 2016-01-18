@@ -13,7 +13,7 @@ Specifically the program:
 * Checks the mature sequences of these proteins to ensure there are no TM domains
   (TM domains in the signal peptide itself will pass this stage) via tmhmm
 * Identifies signal peptides targeted for secretion using targetp
-* Identifies sequences likely to be extracellular compartment using wolfpsort
+* Identifies sequences (regardless of signal peptides) likely to be extracellular compartment using wolfpsort
 
 By default predictions are combined conservatively i.e. the predicted secretome
 is only those sequences that fulfill all of the above criteria but the pipe

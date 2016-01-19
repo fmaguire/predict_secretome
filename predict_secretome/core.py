@@ -3,6 +3,9 @@ import warnings
 import sys
 import shutil
 from predict_secretome import utils
+import hashlib
+import subprocess
+from Bio import SeqIO
 
 class predictSecretome(object):
     """
@@ -18,11 +21,10 @@ class predictSecretome(object):
         - initialise dict containing all the relevant file paths - self.files
         - generating directory structure for run
         """
-        self.dep_path = os.path.join('predict_secretome', 'dependencies',
+        self.dep_path = os.path.join(os.getcwd(), 'predict_secretome', 'dependencies',
                                      'bin')
 
         self.settings = {'check_run': argv.check,
-                         'verbose': argv.verbose,
                          'force_overwrite': argv.force,
                          'permissive': argv.permissive}
 
@@ -34,7 +36,7 @@ class predictSecretome(object):
             euk_type = 'animal'
         elif argv.fungi:
             euk_type = 'fungi'
-        self.settings.update({'euk_type': argv.euk_type})
+        self.settings.update({'euk_type': euk_type})
 
 
         # run check dependencies util
@@ -80,7 +82,7 @@ class predictSecretome(object):
 
 
     def _reformat_input(self):
-                """
+        """
         Format input fasta and write to output:
         Specifically replace accessions with hash of name to guarantee under 20 chars
         input: input_file - filename
@@ -143,7 +145,6 @@ class predictSecretome(object):
         input: input_file - filename (reformatted_fasta)
                tmp_dir - path to temporary intermiedate output
                path - path to dependency bins
-               verbose
         output: mature_seqs_fp - filename containg mature seqs (sigpeps cleaved)
                 accessions_with_sig_pep - list of accessions with sigpeps
                 full_sequences_with_sigpep_fp - filname containing full seqs of seqs
@@ -203,7 +204,7 @@ class predictSecretome(object):
         with open(full_sequences_with_sigpep_fp, 'w') as sigpep_seqs_fh:
             fasta_out = SeqIO.FastaIO.FastaWriter(sigpep_seqs_fh, wrap=None)
             fasta_out.write_header()
-            for record in SeqIO.parse(input_file, 'fasta'):
+            for record in SeqIO.parse(self.files['reformatted_input'], 'fasta'):
                 if record.description in accessions_with_sig_pep:
                     fasta_out.write_record(record)
 
@@ -233,7 +234,7 @@ class predictSecretome(object):
                                      self.files['mature_sequences'])
 
 
-        print("\n##Search for TM domains in mature seqs##")
+        print("##Search for TM domains in mature seqs##")
         tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
         tmhmm_output = tmhmm_output.decode('ascii').split('\n')
         print("Search complete")
@@ -249,13 +250,13 @@ class predictSecretome(object):
 
 
     def _targetp(self):
-       """
-       Runs targetp on full seqs of those identified as having
-       signal peptides by signalp to identify those designated
-       as targeted 'secreted'
-       input: mature_seqs_fp - fasta file without signal peptides
-              plant - boolean to use plant settings or not for targetp
-        /utput: secreted_accessions - list of accessions with signalpeps
+        """
+        Runs targetp on full seqs of those identified as having
+        signal peptides by signalp to identify those designated
+        as targeted 'secreted'
+        input: mature_seqs_fp - fasta file without signal peptides
+               plant - boolean to use plant settings or not for targetp
+         /utput: secreted_accessions - list of accessions with signalpeps
                                       predicted to be secreted
 
         """
@@ -272,18 +273,20 @@ class predictSecretome(object):
         # a symlink to /home/user and removing it after execution
         username = os.getlogin()
         home_targetp = '/home/{0}/targetp-1.1'.format(username)
-        shutil.copytree(os.path.join(self.dep_path, 'targetp-1.1'), home_targetp)
+        os.symlink(os.path.join(os.sep.join(self.dep_path.split(os.sep)[:-1]),
+                                'targetp-1.1'),
+                   home_targetp)
 
         targetp_path = os.path.join(self.dep_path, 'targetp')
         targetp_cmd = "{0} {1} {2}".format(targetp_path,
                                            targetp_flag,
-                                           full_sequences_with_sigpep_fp)
+                                           self.files['sequences_with_sig'])
 
         print("##Identifying sequences with 'secreted' sigpeps##")
         targetp_output = subprocess.check_output(targetp_cmd.split())
         targetp_output = targetp_output.decode('ascii').split('\n')
         print("Search complete")
-        shutil.rmtree(home_targetp)
+        os.unlink(home_targetp)
 
         print("Parsing results")
         # remove header and tail cruft in targetp output
@@ -291,9 +294,9 @@ class predictSecretome(object):
         secreted_accessions = [line.split(' ')[0] \
                                for line in targetp_output[8:-3] if "S" in line]
 
-        self.outputs.update({'secreted_acc', secreted_accessions})
+        self.outputs.update({'secreted_acc': secreted_accessions})
 
-    def _wolfpsort(self)
+    def _wolfpsort(self):
         """
         Run wolfPsort on all formatted sequences using fungi setting
         to get a predicted list of 'extracellular' accessions
@@ -306,13 +309,13 @@ class predictSecretome(object):
         if 'reformatted_input' not in self.files.keys():
             self._reformat_input()
 
-        wolfpsort_path = os.path.join(path, 'runWolfPsortSummary')
+        wolfpsort_path = os.path.join(self.dep_path, 'runWolfPsortSummary')
 
         wolfpsort_cmd = "{0} {1} < {2}".format(wolfpsort_path,
                                                self.settings['euk_type'],
                                                self.files['reformatted_input'])
 
-        print("\n##Identifying sequences belonging to 'extracellular' compartment##")
+        print("##Identifying sequences belonging to 'extracellular' compartment##")
 
         wolfpsort_output = subprocess.check_output(wolfpsort_cmd, shell=True)
         wolfpsort_output = wolfpsort_output.decode('ascii').split('\n')
@@ -337,8 +340,9 @@ class predictSecretome(object):
 
         sig_peptides = set(self.outputs['acc_with_sig'])
         no_tm_domains = set(self.outputs['non_tm_mature_accs'])
-        secreted = set(self.outputs['secreted_accessions'])
+        secreted = set(self.outputs['secreted_acc'])
         extracellular = set(self.outputs['extracellular_acc'])
+
 
 
         # if conservative only get those accessions predicted as
@@ -352,14 +356,16 @@ class predictSecretome(object):
         # if permissive get all accessions that belong to any of these
         # categories
 
-        if not permissive:
-            out_flag = 'conservative'
+
+
+        if not self.settings['permissive']:
+            self.out_flag = 'conservative'
             predicted_acc_list = set.intersection(sig_peptides,
                                                   no_tm_domains,
                                                   secreted,
                                                   extracellular)
         else:
-            out_flag = 'permissive'
+            self.out_flag = 'permissive'
             # maybe remove no_tm_domains from this
             # as plenty of things don't have tm domains
             # that aren't secreted
@@ -371,7 +377,7 @@ class predictSecretome(object):
         if len(predicted_acc_list) is 0:
             print("No secreted proteins found using {0} setting".format(out_flag))
 
-        self.output.update({'predicted_secretome_acc': predicted_acc_list})
+        self.outputs.update({'predicted_secretome_acc': predicted_acc_list})
 
 
 
@@ -385,11 +391,11 @@ class predictSecretome(object):
         """
 
         # Dependency
-        if self.secretome_accessions is None:
+        if self.outputs['predicted_secretome_acc'] is None:
             self.get_secretome_accessions()
 
 
-        print("\n##Writing predicted secretome fasta file##")
+        print("##Writing predicted secretome fasta file##")
 
 
             #if self.settings['permissive']:
@@ -397,28 +403,28 @@ class predictSecretome(object):
 
 
 
-        formatted_input_fh = open(self.files['formatted_fasta'], 'r')
+        formatted_input_fp = open(self.files['reformatted_input'], 'r')
 
 
-        secretome_output = "{0}_{1}_predicted_secretome.fasta".format(self.run_name, out_flag)
-        out_handle = open(output, 'w')
+        secretome_output = os.path.join(self.settings['output_dir'],
+                                        "{0}_{1}_predicted_secretome.fasta".format(self.run_name,
+                                                                                   self.out_flag))
 
 
+        out_handle = open(secretome_output, 'w')
 
-        formatted_input_fh
 
         fasta_out = SeqIO.FastaIO.FastaWriter(out_handle, wrap=None)
         fasta_out.write_header()
 
         print("Retreving Secretome fasta")
-        for record in SeqIO.parse(in_handle, 'fasta'):
-            if record.description in self.secretome_accessions:
-                record.id = rename_mappings[record.id]
+        for record in SeqIO.parse(formatted_input_fp, 'fasta'):
+            if record.description in self.outputs['predicted_secretome_acc']:
+                record.id = self.rename_mappings[record.id]
                 record.name = ''
                 record.description = ''
                 fasta_out.write_record(record)
 
-        in_handle.close()
         fasta_out.write_footer()
         out_handle.close()
         print("Secretome identification Complete")
@@ -436,6 +442,6 @@ class predictSecretome(object):
         self._tmhmm()
         self._targetp()
         self._wolfpsort()
-        self._
+        self._get_secretome_accessions()
         self._output_secretome()
         return

@@ -26,7 +26,8 @@ class predictSecretome(object):
 
         self.settings = {'check_run': argv.check,
                          'force_overwrite': argv.force,
-                         'permissive': argv.permissive}
+                         'permissive': argv.permissive,
+                         'transporters': argv.transporters}
 
 
         # parse the typing argument
@@ -140,15 +141,10 @@ class predictSecretome(object):
 
     def _signalp(self):
         """
-        Use signalp to identify sequences with signal peptides and create
-        mature sequences with these signal peptides cleaved out
-        input: input_file - filename (reformatted_fasta)
-               tmp_dir - path to temporary intermiedate output
-               path - path to dependency bins
-        output: mature_seqs_fp - filename containg mature seqs (sigpeps cleaved)
-                accessions_with_sig_pep - list of accessions with sigpeps
-                full_sequences_with_sigpep_fp - filname containing full seqs of seqs
-                                                id'd as having a sigpep
+        Use signalp to identify sequences with signal peptides
+        and create 2 files:
+            - the full sequences of those with signal peptides
+            - all input sequences with any signal peptides cleaved
         """
 
         # Dependency
@@ -166,22 +162,20 @@ class predictSecretome(object):
                                                            self.files['reformatted_input'])
 
 
-        # we only care about the mature sequences output as they are the sequences
-        # predicted as having signal peptides (which have then been subsequently
-        # trimmed)
-
         print('##Detecing signal peptides##')
         sigp_proc = subprocess.Popen(sigp_cmd.split(),
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
         _, stderr = sigp_proc.communicate()
-
         print("Search Complete")
 
+
+        # if there are no signal peps - then just use output from wolfpsort
+        # and tmhmm filtering
         if '# No sequences predicted with a signal peptide' in stderr.decode('ascii'):
-            print("No signal peptides detected no secretome will be predicted")
-            # if there are no signal peptides can still calculate and return tm if specified
-            sys.exit()
+            print("No signal peptides detected so secretome will only be predicted using"
+                   "as those sequences without tm domains and with wolpfsort secretion")
+            return
 
 
         print("Collecting accessions with signal peptides")
@@ -210,7 +204,37 @@ class predictSecretome(object):
 
             fasta_out.write_footer()
 
+        print("Generating signal peptide free input fasta")
+        # i.e. taking all sequences without signal peptides and the mature
+        # sequences of those that do have them.
+
+        # get sequences without signal peptides and write them to mature
+        # seqs file
+
+        accessions_without_sig_pep = [acc for acc in self.rename_mappings.keys()
+                                        if acc not in accessions_with_sig_pep]
+
+        input_without_sigpeps = os.path.join(self.settings['work_dir'],
+                                             'input_seqs_without_sigpeps')
+
+        # as we want to append the non signal peptide sequences
+        # to the mature sequences
+        shutil.copy(mature_seqs_fp, input_without_sigpeps)
+
+        with open(input_without_sigpeps, 'a') as no_sigpep_fh:
+            fasta_out = SeqIO.FastaIO.FastaWriter(no_sigpep_fh, wrap=None)
+            fasta_out.write_header()
+            for record in SeqIO.parse(self.files['reformatted_input'], 'fasta'):
+                if record.description in accessions_without_sig_pep:
+                    fasta_out.write_record(record)
+
+            fasta_out.write_footer()
+
+
+
+
         self.files.update({'mature_sequences': mature_seqs_fp,
+                           'sig_pep_free_seqs': input_without_sigpeps,
                            'sequences_with_sig': full_sequences_with_sigpep_fp})
 
         self.outputs.update({'acc_with_sig': accessions_with_sig_pep})
@@ -218,35 +242,64 @@ class predictSecretome(object):
 
     def _tmhmm(self):
         """
-        Run tmhmm on the mature sequences from signalp to ensure they
-        don't have transmembrane domains outwith of their signal peptide
-        input: mature_seqs_fp - fasta file without signal peptides
-        output: acc_without_tm_in_mature_seq - list of accessions
-                                               without TM domains
-                                               in their mature
-                                               sequences
+        Run tmhmm on all sequences (if those sequences have signalpeptides
+        then trim them off i.e. use mature seqs).
+
+        Any sequences with TM domains are unlikely to be secreted.
         """
-        if "mature_seqs" not in self.files.keys():
-            self._signalp()
+
+        #if "mature_seqs" not in self.files.keys():
+        #    self._signalp()
 
         tmhmm = os.path.join(self.dep_path, 'tmhmm')
         tmhmm_cmd = "{0} {1}".format(tmhmm,
-                                     self.files['mature_sequences'])
+                                     self.files['sig_pep_free_seqs'])
 
 
-        print("##Search for TM domains in mature seqs##")
+        print("##Search for TM domains in sequences without ##")
         tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
         tmhmm_output = tmhmm_output.decode('ascii').split('\n')
         print("Search complete")
 
+        with open(os.path.join(self.settings['work_dir'], "tmhmm_output"), 'w') as tmhmm_fh:
+            for line in tmhmm_output:
+                tmhmm_fh.write(line + '\n')
+
+
+
         print("Parsing results")
         # Parse tmhmm raw output and write acc without tm domains
         # in non signal peptide sequence to output_file
-        acc_without_tm_in_mature_seq = [line.split('\t')[0] \
-                                          for line in tmhmm_output \
-                                            if "\tPredHel=0\t" in line]
+
+        acc_without_tm_in_mature_seq = []
+        putative_transporter = []
+
+        for line in tmhmm_output:
+            split_line = line.split('\t')
+            if len(split_line) != 6:
+                continue
+            num_helices = int(split_line[4].split('=')[-1])
+            if num_helices == 0:
+                acc_without_tm_in_mature_seq.append(split_line[0])
+            if self.settings['transporters'] and num_helices >= self.settings['transporters']:
+                putative_transporter.append(split_line[0])
 
         self.outputs.update({'non_tm_mature_accs': acc_without_tm_in_mature_seq})
+
+        if self.settings['transporters']:
+            print("##Generating List of Putative Transporters##")
+            transporters = os.path.join(self.settings['output_dir'],
+                                        'transporters_{}_tm_domains'.format(self.settings['transporters']))
+
+            with open(transporters, 'w') as transporter_seqs_fh:
+                fasta_out = SeqIO.FastaIO.FastaWriter(transporter_seqs_fh, wrap=None)
+                fasta_out.write_header()
+                for record in SeqIO.parse(self.files['reformatted_input'], 'fasta'):
+                    if record.description in putative_transporter:
+                        fasta_out.write_record(record)
+                fasta_out.write_footer()
+
+                self.files.update({'transporters': transporters})
 
 
     def _targetp(self):
@@ -288,6 +341,12 @@ class predictSecretome(object):
         print("Search complete")
         os.unlink(home_targetp)
 
+        with open(os.path.join(self.settings['work_dir'], "targetp_out"), 'w') as targetp_fh:
+            for line in targetp_output:
+                targetp_fh.write(line + '\n')
+
+
+
         print("Parsing results")
         # remove header and tail cruft in targetp output
         # and get those that have S as top predicted target
@@ -319,6 +378,11 @@ class predictSecretome(object):
 
         wolfpsort_output = subprocess.check_output(wolfpsort_cmd, shell=True)
         wolfpsort_output = wolfpsort_output.decode('ascii').split('\n')
+
+        with open(os.path.join(self.settings['work_dir'], "wolfpsort_out"), 'w') as wolf_fh:
+            for line in wolfpsort_output:
+                wolf_fh.write(line + '\n')
+
         print("Search complete")
 
 
@@ -336,14 +400,12 @@ class predictSecretome(object):
         Get secretome accessions from the predictions
         """
         # if predictions not done, then do them
-        print("\n##Combining predictions##")
+        print("##Combining predictions##")
 
         sig_peptides = set(self.outputs['acc_with_sig'])
         no_tm_domains = set(self.outputs['non_tm_mature_accs'])
-        secreted = set(self.outputs['secreted_acc'])
+        secreted_sig = set(self.outputs['secreted_acc'])
         extracellular = set(self.outputs['extracellular_acc'])
-
-
 
         # if conservative only get those accessions predicted as
         # A) having a signal peptide (signalp)
@@ -355,27 +417,25 @@ class predictSecretome(object):
         #     compartment (wolFPSort)
         # if permissive get all accessions that belong to any of these
         # categories
-
+        signal_pep_secreted = set.intersection(sig_peptides,
+                                               no_tm_domains,
+                                               secreted_sig)
 
 
         if not self.settings['permissive']:
             self.out_flag = 'conservative'
-            predicted_acc_list = set.intersection(sig_peptides,
-                                                  no_tm_domains,
-                                                  secreted,
+            predicted_acc_list = set.intersection(signal_pep_secreted,
                                                   extracellular)
         else:
             self.out_flag = 'permissive'
             # maybe remove no_tm_domains from this
             # as plenty of things don't have tm domains
             # that aren't secreted
-            predicted_acc_list = set.union(sig_peptides,
-                                           no_tm_domains,
-                                           secreted,
+            predicted_acc_list = set.union(signal_pep_secreted,
                                            extracellular)
 
         if len(predicted_acc_list) is 0:
-            print("No secreted proteins found using {0} setting".format(out_flag))
+            print("No secreted proteins found using {0} setting".format(self.out_flag))
 
         self.outputs.update({'predicted_secretome_acc': predicted_acc_list})
 
@@ -392,7 +452,8 @@ class predictSecretome(object):
 
         # Dependency
         if self.outputs['predicted_secretome_acc'] is None:
-            self.get_secretome_accessions()
+            sys.exit()
+            #self.get_secretome_accessions()
 
 
         print("##Writing predicted secretome fasta file##")

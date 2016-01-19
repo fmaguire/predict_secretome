@@ -84,13 +84,13 @@ def get_parser():
                         help='Get permissive secretome prediction '
                              '(default: %(default)s)')
 
-    #parser.add_argument('--transporter_threshold', '-t',
-    #                    action='store',
-    #                    dest='trans',
-    #                    default=0,
-    #                    type=int,
-    #                    help='Minimum number of tm domains in mature sequence'
-    #                         'required to consider a protein as a transporter')
+    parser.add_argument('--transporter_threshold', '-t',
+                        action='store',
+                        dest='transporters',
+                        default=False,
+                        type=int,
+                        help='Minimum number of tm domains in mature sequence'
+                             'required to consider a protein as a transporter')
 
     return parser
 
@@ -156,9 +156,6 @@ def check_dependencies(path='predict_secretome/dependencies/bin',
         sys.exit(0)
 
     return True
-
-
-
 
 def detect_and_output_transporters(all_sequences_fp,
                                    rename_mappings,
@@ -244,63 +241,6 @@ def detect_and_output_transporters(all_sequences_fp,
         transporter_out_fh.close()
         all_input_seqs_fh.close()
 
-
-
-def secretome(accessions_with_sig_pep,
-              accesions_no_tm_in_mature_seq,
-              secreted_accessions,
-              extracellular_accessions,
-              conservative=True,
-              verbose=False):
-    """
-    Combined predicted accessions
-    input: formatted_fasta_fp - formatted fasta file of all input seqs
-           fungi_flag - boolean to use fungi settings or not for targetp
-           path - path to dependencies
-           verbose
-    output: extracellular_accessions - list of accessions with signalpeps
-                                        predicted to be extracellular
-
-    """
-
-    print_verbose("\n##Combining predictions##", v_flag=verbose)
-
-    sig_peptides = set(accessions_with_sig_pep)
-    no_tm_domains = set(accesions_no_tm_in_mature_seq)
-    secreted = set(secreted_accessions)
-    extracellular = set(extracellular_accessions)
-
-
-    # if conservative only get those accessions predicted as
-    # A) having a signal peptide (signalp)
-    # B) not having any TM domains outside of this sigpep
-    #     (tmhmm)
-    # C) a signal peptide predicted as being for secretion
-    #     (targetp)
-    # D) a sequence predicted as belonging to the extracellular
-    #     compartment (wolFPSort)
-    # if permissive get all accessions that belong to any of these
-    # categories
-    if conservative:
-        out_flag = 'conservative'
-        predicted_acc_list = set.intersection(sig_peptides,
-                                              no_tm_domains,
-                                              secreted,
-                                              extracellular)
-    else:
-        out_flag = 'permissive'
-        # maybe remove no_tm_domains from this
-        # as plenty of things don't have tm domains
-        # that aren't secreted
-        predicted_acc_list = set.union(sig_peptides,
-                                       no_tm_domains,
-                                       secreted,
-                                       extracellular)
-
-    if len(predicted_acc_list) is 0:
-        warnings.warn("No secreted proteins found using {0} setting".format(out_flag))
-
-    return predicted_acc_list
 
 
 

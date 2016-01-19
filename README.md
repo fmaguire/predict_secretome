@@ -10,16 +10,21 @@ Currently it is hardcoded for eukaryotic fungal sequences.
 
 Specifically the program:
 * Uses signalp to identify proteins with signal peptides
-* Checks the mature sequences of these proteins to ensure there are no TM domains
-  (TM domains in the signal peptide itself will pass this stage) via tmhmm
+* All sequences without signal peptides and those with them (cleaved off) are 
+    are searched for TM domains via TMHMM (and discarded if they contain them).
+    Optionally, putative transporters are output at this stage.
 * Identifies signal peptides targeted for secretion using targetp
 * Identifies sequences (regardless of signal peptides) likely to be extracellular compartment using wolfpsort
 
 By default predictions are combined conservatively i.e. the predicted secretome
-is only those sequences that fulfill all of the above criteria but the pipe
-can optionally be run permissively where passing any stage will be sufficient for output
-in the predicted secretome e.g. has signal peptide for secretion but is not predicted as extracellular, or has a signal peptide but has
-TM domains in the mature sequence etc.  
+is only those sequences that contain signal peptides, do not have TM domains
+in their mature sequence and are predicted by targetp and wolfpsort to be 
+secreted and extracellular respectively. 
+
+Optionally, the permissive combination will contain all those sequences
+that are identified by wolfpsort to be extracellular or those with signal peptides,
+no TM domains and a secretion signal.
+
 
 The package can also optionally output predicted transporters based on a minimum number of
 TM domains appearing in a sequence (or mature sequence in the case of proteins
@@ -33,9 +38,7 @@ can be shown using use -h)
   -h, --help                                  Show help message and exit
   --fasta INPUT_FILE, -f INPUT_FILE           Input fasta file for secretome prediction (REQUIRED)
   --run_name RUN_NAME, -n RUN_NAME            Prefix for output (default is input filename)
-  --no_cleanup, -j                            Don't remove intermediate outputs
   --check, -x                                 Just check dependencies of secretome_pipe.py then exit (default: False)
-  --verbose, -v                               Print verbose output (default: False)
   --permissive, -p                            Get permissive secretome prediction (default: False)
   --transporter_threshold TRANS, -t TRANS     Minimum number of tm domains in mature
                                               sequences required to consider a protein as a

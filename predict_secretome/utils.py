@@ -157,90 +157,39 @@ def check_dependencies(path='predict_secretome/dependencies/bin',
 
     return True
 
-def detect_and_output_transporters(all_sequences_fp,
-                                   rename_mappings,
-                                   tmp_dir,
-                                   run_name,
-                                   path='dependencies/bin',
-                                   mature_seqs=None,
-                                   verbose=False,
-                                   tm_threshold=2):
+def write_seqs_from_accessions(acc_list,
+                               input_file,
+                               output_file):
     """
-    Find sequences which num tm domains > tm_threshold in
-    a) mature sequences if they have a signal peptide
-    b) full sequences for all other proteins
-    input: formatted_fasta_fp- all fasta sequences
-           rename_mappings- mappings to original seq names
-           mature_sequences_fp- the mature sequences of those seqs with sigpeps
-           tmp_dir- temporary file output directory
-           tm_threshold- integer minimum number of tm domains to search for
-    output: None
+    Parse an input fasta file and write sequences
+    to the output if their accession is in the acc_list
     """
-    # need to combine sequences that have signalpeptides and thus mature seqs
-    # with the full sequences of all the sequences without them
-    if mature_seqs:
-
-        all_input_seqs_fh = open(all_sequences_fp, 'r')
-
-        with open(mature_seqs, 'r') as mature_seqs_fh:
-            mature_seqs = {record.id: record for \
-                            record in SeqIO.parse(mature_seqs_fh, 'fasta')}
-
-        transporter_search_seqs_fp = os.path.join(tmp_dir,
-                                                  'mature_if_sigpep_full_otherwise.fas')
-
-        transporter_search_seqs_fh = open(transporter_search_seqs_fp, 'w')
-
-        # if record is in the mature seqs (i.e. has signal peptide) then write
-        # that otherwise write the full sequence
-        for record in SeqIO.parse(all_input_seqs_fh, 'fasta'):
-            if record.id in mature_seqs.keys():
-                SeqIO.write(mature_seqs[record.id], transporter_search_seqs_fh, 'fasta')
-            else:
-                SeqIO.write(record, transporter_search_seqs_fh, 'fasta')
-
-        all_input_seqs_fh.close()
-        transporter_search_seqs_fh.close()
-    else:
-        transporter_search_seqs_fp = all_sequences_fp
+    seqs_written = 0
+    with open(output_file, 'w') as out_fh:
+        fasta_out = SeqIO.FastaIO.FastaWriter(out_fh, wrap=None)
+        fasta_out.write_header()
+        for record in SeqIO.parse(input_file, 'fasta'):
+            if record.description in acc_list:
+                seqs_written += 1
+                fasta_out.write_record(record)
+        if seqs_written > 0:
+            fasta_out.write_footer()
 
 
-    tmhmm_fp = os.path.join(path, 'tmhmm')
-    tmhmm_cmd = "{0} {1}".format(tmhmm_fp,
-                                 transporter_search_seqs_fp)
-
-    print_verbose("\n##Search for Putative Transporters##", v_flag=verbose)
-    tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
-    tmhmm_output = tmhmm_output.decode('ascii').split('\n')
-    print_verbose("Search complete", v_flag=verbose)
-
-    print_verbose("Parsing results", v_flag=verbose)
-    # Parse tmhmm raw output and write acc with more than
-    # in non signal peptide sequence to output_file
-    putative_transporter_acc = []
-    for line in tmhmm_output[:-1]:
-        line = line.split('\t')
-        predhel = int(line[4].lstrip('PredHel='))
-        if predhel >= tm_threshold:
-            putative_transporter_acc.append(line[0])
-
-    if putative_transporter_acc:
-        transporter_out_fh = open(run_name+'_predicted_transporters.fas', 'w')
-        transporter_out = SeqIO.FastaIO.FastaWriter(transporter_out_fh)
-        transporter_out.write_header()
-
-        all_input_seqs_fh = open(all_sequences_fp, 'r')
-        for record in SeqIO.parse(all_input_seqs_fh, 'fasta'):
-            if record.id in putative_transporter_acc:
-                record.id = rename_mappings[record.id]
-                record.description = ''
-                record.name = ''
-                transporter_out.write_record(record)
-
-        transporter_out.write_footer()
-        transporter_out_fh.close()
-        all_input_seqs_fh.close()
-
-
-
-
+def batch_iterator(iterator, batch_size):
+    """
+    Returns lists of length of batch_size
+    """
+    entry = True
+    while entry:
+        batch = []
+        while len(batch) < batch_size:
+            try:
+                entry = iterator.__next__()
+            except StopIteration:
+                entry = None
+            if entry is None:
+                break
+            batch.append(entry)
+        if batch:
+            yield batch

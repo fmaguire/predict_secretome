@@ -66,7 +66,7 @@ fi
 CHLOROP=/usr/cbs/bio/bin/chlorop		# options: none	
 
 # Substitute the full path to the SignalP executable:
-SIGNALP=/usr/cbs/bio/bin/signalp		# options: '-m nn -t euk' 
+SIGNALP=$PWD/../signalp-4.1/signalp
 
 ### NO CHANGES EXPECTED BELOW THIS LINE +++++++++++++++++++++++++++++++++++++++
 
@@ -102,10 +102,10 @@ Ocutoff=0.00
 # concerning only CS predictions:
 SCRIPTTCS=$TARGETP/bin/mTPcsbin
 MATRIX=$TARGETP/etc/mTPcsmat
-mTPCS_max_len=120	# max allowed predicted len. of mTPs; if len<thislen, no mTP-CS predicted
-seq_max_len=180		# max len. of seq. that is submitted to NNs        
-					# (also max len. for submission to ChP & SiP)
-					# (must be <cut_len in script in2how+fasta.awk)
+mTPCS_max_len=9999999999 # max allowed predicted len. of mTPs; if len<thislen, no mTP-CS predicted
+seq_max_len=9999999999   # max len. of seq. that is submitted to NNs        
+					 # (also max len. for submission to ChP & SiP)
+					 # (must be <cut_len in script in2how+fasta.awk)
 
 
 ### get the options +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

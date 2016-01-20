@@ -22,7 +22,7 @@ print $dir
 my $outputDir = "predict_secretome/dependencies/signalp-4.1/tmp";
 
 # max number of sequences per run (any number can be handled)
-my $MAX_ALLOWED_ENTRIES=10000;
+my $MAX_ALLOWED_ENTRIES=99999999;
 
 ###############################################################################
 #               NOTHING SHOULD NEED CHANGING BELOW THIS LINE!

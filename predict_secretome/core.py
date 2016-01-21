@@ -218,7 +218,8 @@ class predictSecretome(object):
 
         utils.write_seqs_from_accessions(accessions_without_sig_pep,
                                          self.files['reformatted_input'],
-                                         input_without_sigpeps)
+                                         input_without_sigpeps,
+                                         append=True)
 
 
         self.files.update({'mature_sequences': mature_seqs_fp,
@@ -310,9 +311,13 @@ class predictSecretome(object):
         # a symlink to /home/user and removing it after execution
         username = os.getlogin()
         home_targetp = '/home/{0}/targetp-1.1'.format(username)
-        os.symlink(os.path.join(os.sep.join(self.dep_path.split(os.sep)[:-1]),
-                                'targetp-1.1'),
-                   home_targetp)
+
+        try:
+            os.symlink(os.path.join(os.sep.join(self.dep_path.split(os.sep)[:-1]),
+                                    'targetp-1.1'),
+                       home_targetp)
+        except FileExistsError:
+            print("Symlink hack for targetp already exists, proceeding anyway")
 
         targetp_path = os.path.join(self.dep_path, 'targetp')
 
@@ -350,8 +355,6 @@ class predictSecretome(object):
 
         targetp_output = targetp_stdout.decode('ascii').split('\n')[8:-3]
 
-
-        print(targetp_output)
 
         print("Search complete")
         os.unlink(home_targetp)
@@ -428,10 +431,10 @@ class predictSecretome(object):
         secreted_sig = set(self.outputs['secreted_acc'])
         extracellular = set(self.outputs['extracellular_acc'])
 
-        print("Accessions with signal peptides (signalp):", len(sig_peptides))
-        print("Accessions without a TM in mature sequence (tmhmm):", len(no_tm_domains))
-        print("Secreted signal peptide (targetp):", len(secreted_sig))
-        print("Extracellular (wolfpsort):", len(extracellular))
+        print("Accessions with signal peptides (signalp):", len(sig_peptides), sig_peptides)
+        print("Accessions without a TM in mature sequence (tmhmm):", len(no_tm_in_mature), no_tm_in_mature)
+        print("Secreted signal peptide (targetp):", len(secreted_sig), secreted_sig)
+        print("Extracellular (wolfpsort):", len(extracellular), extracellular)
 
         # if conservative only get those accessions predicted as
         # A) having a signal peptide (signalp)

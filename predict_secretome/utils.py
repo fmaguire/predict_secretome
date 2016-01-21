@@ -159,13 +159,20 @@ def check_dependencies(path='predict_secretome/dependencies/bin',
 
 def write_seqs_from_accessions(acc_list,
                                input_file,
-                               output_file):
+                               output_file,
+                               append=False):
     """
     Parse an input fasta file and write sequences
     to the output if their accession is in the acc_list
     """
     seqs_written = 0
-    with open(output_file, 'w') as out_fh:
+
+    if append:
+        write_flag = 'a'
+    else:
+        write_flag = 'w'
+
+    with open(output_file, write_flag) as out_fh:
         fasta_out = SeqIO.FastaIO.FastaWriter(out_fh, wrap=None)
         fasta_out.write_header()
         for record in SeqIO.parse(input_file, 'fasta'):
@@ -175,21 +182,3 @@ def write_seqs_from_accessions(acc_list,
         if seqs_written > 0:
             fasta_out.write_footer()
 
-
-def batch_iterator(iterator, batch_size):
-    """
-    Returns lists of length of batch_size
-    """
-    entry = True
-    while entry:
-        batch = []
-        while len(batch) < batch_size:
-            try:
-                entry = iterator.__next__()
-            except StopIteration:
-                entry = None
-            if entry is None:
-                break
-            batch.append(entry)
-        if batch:
-            yield batch

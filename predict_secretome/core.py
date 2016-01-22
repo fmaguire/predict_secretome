@@ -53,8 +53,15 @@ class predictSecretome(object):
 
         self.run_name = argv.run_name
 
+        if self.settings['permissive']:
+            combination_flag = "permissive"
+        else:
+            combination_flag = "conservative"
+
         self.settings.update({'output_dir': os.path.join(os.getcwd(),
-            '{}_secretome_prediction_output'.format(self.run_name))})
+            '{0}_secretome_prediction_{1}_{2}_output'.format(self.run_name,
+                                                             self.settings['euk_type'],
+                                                             combination_flag))})
 
         self.settings.update({'work_dir': os.path.join(self.settings['output_dir'],
                                                            "intermediate_outputs")})
@@ -318,52 +325,68 @@ class predictSecretome(object):
                        home_targetp)
         except FileExistsError:
             print("Symlink hack for targetp already exists, proceeding anyway")
-
+        # FileExistsError:
         targetp_path = os.path.join(self.dep_path, 'targetp')
 
-        cropped_seqs = os.path.join(self.settings['work_dir'],
-                                    "cropped_sig.fasta")
 
-        with open(cropped_seqs, 'w') as cropped_fh:
-            fasta_out = SeqIO.FastaIO.FastaWriter(cropped_fh, wrap=None)
-            fasta_out.write_header()
-            with open(self.files['sequences_with_sig'], "r") as sig_seq_fh:
-                for record in SeqIO.parse(sig_seq_fh, 'fasta'):
+        # so due to the problems with targetp there is some limit to the total
+        # fasta input length therefore need to crop sequences and split fasta file
+        print("Splitting and truncating signal peptide containing sequences for "
+              "targetp")
+        record_iterator = SeqIO.parse(open(self.files['sequences_with_sig']),
+                                      'fasta')
+
+        partial_fasta_with_sig_fps = []
+        for i, batch in enumerate(utils.batch_iterator(record_iterator,
+                                                       100)):
+            split_filename = os.path.join(self.settings['work_dir'],
+                                          "cropped_sig_partial_{}.fasta".format(i))
+
+            with open(split_filename, 'w') as partial_fh:
+                partial_fasta = SeqIO.FastaIO.FastaWriter(partial_fh, wrap=None)
+                partial_fasta.write_header()
+
+                for record in batch:
+                    # truncate
                     if len(record.seq) > 500:
                         record.seq = record.seq[:500]
-                    fasta_out.write_record(record)
-                fasta_out.write_footer()
+                    partial_fasta.write_record(record)
+                partial_fasta.write_footer()
 
-        targetp_cmd = "{0} {1} {2}".format(targetp_path,
-                                           targetp_flag,
-                                           cropped_seqs)
+            partial_fasta_with_sig_fps.append(split_filename)
 
-        print("##Identifying sequences with 'secreted' sigpeps (targetp)##")
-        targetp_proc = subprocess.Popen(targetp_cmd.split(),
-                                         stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE)
-        targetp_stdout, targetp_stderr = targetp_proc.communicate()
+        # run targetp
+        print("Running targetp on split files")
+        targetp_output = []
+        for subfile in partial_fasta_with_sig_fps:
+            targetp_cmd = "{0} {1} {2}".format(targetp_path,
+                                               targetp_flag,
+                                               subfile)
 
-        if 'Aborted' in targetp_stderr.decode('ascii'):
-            print(targetp_cmd)
-            print("targetp has crashed, unfortunately as the core of"
-                   "targetp is only distributed as a trained and compiled fortran"
-                   "ANN this is hard to debug.  Possibly your input file is too"
-                   "large, attempt splitting and re-running using partial"
-                   "files")
-            sys.exit()
+            targetp_proc = subprocess.Popen(targetp_cmd.split(),
+                                            stdout=subprocess.PIPE,
+                                            stderr=subprocess.PIPE)
+            targetp_stdout, targetp_stderr = targetp_proc.communicate()
+            if 'Aborted' in targetp_stderr.decode('ascii'):
+                print(targetp_cmd)
+                print("targetp has crashed, unfortunately as the core of"
+                       "targetp is only distributed as a trained and compiled fortran"
+                       "ANN this is hard to debug.  Possibly your input file is too"
+                       "large, attempt splitting and re-running using partial"
+                       "files")
+                sys.exit(1)
 
-        targetp_output = targetp_stdout.decode('ascii').split('\n')[8:-3]
+            partial_output = targetp_stdout.decode('ascii').split('\n')[8:-3]
+            targetp_output = targetp_output + partial_output
 
+        print("Targetp search complete")
 
-        print("Search complete")
-        os.unlink(home_targetp)
+        #os.unlink(home_targetp)
 
 
         with open(os.path.join(self.settings['work_dir'], "targetp_out"), 'w') as targetp_fh:
             for line in targetp_output:
                 targetp_fh.write(line + '\n')
-
 
 
         print("Parsing results")
@@ -372,10 +395,8 @@ class predictSecretome(object):
         secreted_accessions = []
         for line in targetp_output:
             split_line = re.split('\s+', line)
-            if split_line[6] == 'S':
+            if split_line[5] == 'S':
                 secreted_accessions.append(split_line[0])
-
-
         self.outputs.update({'secreted_acc': secreted_accessions})
 
     def _wolfpsort(self):

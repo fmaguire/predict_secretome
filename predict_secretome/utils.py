@@ -182,3 +182,22 @@ def write_seqs_from_accessions(acc_list,
         if seqs_written > 0:
             fasta_out.write_footer()
 
+
+def batch_iterator(iterator, batch_size):
+    """
+    Generator for lists of length of the batch size for any iterator
+    """
+    entry = True
+    while entry:
+        batch = []
+        while len(batch) < batch_size:
+            try:
+                entry = iterator.__next__()
+            except StopIteration:
+                entry = None
+            if entry is None:
+                break
+            batch.append(entry)
+        if batch:
+            yield batch
+

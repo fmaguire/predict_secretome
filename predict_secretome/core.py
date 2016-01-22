@@ -323,7 +323,7 @@ class predictSecretome(object):
             os.symlink(os.path.join(os.sep.join(self.dep_path.split(os.sep)[:-1]),
                                     'targetp-1.1'),
                        home_targetp)
-        except FileExistsError:
+        except OSError:
             print("Symlink hack for targetp already exists, proceeding anyway")
         # FileExistsError:
         targetp_path = os.path.join(self.dep_path, 'targetp')

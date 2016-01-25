@@ -443,7 +443,8 @@ class predictSecretome(object):
 
         logging.info("##Identifying sequences belonging to 'extracellular' compartment##")
 
-        wolfpsort_output = subprocess.check_output(wolfpsort_cmd, shell=True)
+        with open(os.devnull, 'w') as fh_null:
+            wolfpsort_output = subprocess.check_output(wolfpsort_cmd, stderr=fh_null, shell=True)
         wolfpsort_output = wolfpsort_output.decode('ascii').split('\n')
 
         with open(os.path.join(self.settings['work_dir'], "wolfpsort_out"), 'w') as wolf_fh:

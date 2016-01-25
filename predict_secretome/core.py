@@ -7,6 +7,7 @@ from predict_secretome import utils
 import hashlib
 import subprocess
 from Bio import SeqIO
+import logging
 
 class predictSecretome(object):
     """
@@ -70,6 +71,28 @@ class predictSecretome(object):
 
         self._initialise_directory_structure()
 
+        self._start_logger()
+
+    def _start_logger(self):
+        """
+        Initialise logger
+        """
+        logging.basicConfig(level=logging.DEBUG,
+                            format="%(asctime)s %(levelname)-8s %(message)s",
+                            datefmt='%y-%m-%d %H:%M',
+                            filename=os.path.join(self.settings['output_dir'],
+                            self.run_name + '.log'),
+                            filemode='w')
+
+        console = logging.StreamHandler()
+        console.setLevel(logging.INFO)
+
+        formatter = logging.Formatter("%(levelname)-8s %(message)s")
+
+        console.setFormatter(formatter)
+
+        logging.getLogger('').addHandler(console)
+
 
 
     def _initialise_directory_structure(self):
@@ -100,7 +123,7 @@ class predictSecretome(object):
         output: rename_mappings - a dict of {new_acc: original_acc}
         """
 
-        print("\n##Formatting input fasta: {0}##".format(self.files['input_fasta']))
+        logging.info("##Formatting input fasta: {0}##".format(self.files['input_fasta']))
 
 
         formatted_fasta_fp = os.path.join(self.settings['work_dir'],
@@ -139,7 +162,7 @@ class predictSecretome(object):
         raw_fasta_in_fh.close()
         formatted_out_fh.close()
 
-        print("Input fasta formatted: {0}".format(formatted_fasta_fp))
+        logging.debug("Input fasta formatted: {0}".format(formatted_fasta_fp))
 
         # update namespace on completion
         self.files.update({'reformatted_input': formatted_fasta_fp})
@@ -170,21 +193,21 @@ class predictSecretome(object):
                                                            self.files['reformatted_input'])
 
 
-        print('##Detecing signal peptides##')
+        logging.info('##Detecing signal peptides##')
         sigp_proc = subprocess.Popen(sigp_cmd.split(),
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
         _, stderr = sigp_proc.communicate()
-        print("Search Complete")
+        logging.debug("Search Complete")
 
         # if there are no signal peps - then just use output from wolfpsort
         # and tmhmm filtering
         if '# No sequences predicted with a signal peptide' in stderr.decode('ascii'):
-            print("No signal peptides detected so secretome can only be predicted using"
-                   "permissive settings")
+            logging.warning("No signal peptides detected so secretome can only be predicted using"
+                            "permissive settings")
             return
 
-        print("Collecting accessions with signal peptides")
+        logging.debug("Collecting accessions with signal peptides")
         # get list of all accessions with signal peptides from mature
         # sequences file
         accessions_with_sig_pep = []
@@ -200,12 +223,12 @@ class predictSecretome(object):
         full_sequences_with_sigpep_fp = os.path.join(self.settings['work_dir'],
                                                      'signalp_full_seqs_with_sigpep.fasta')
 
-        print("Assembling full sequences with signal peptides")
+        logging.debug("Assembling full sequences with signal peptides")
 
         utils.write_seqs_from_accessions(accessions_with_sig_pep,
                                          self.files['reformatted_input'],
                                          full_sequences_with_sigpep_fp)
-        print("Generating signal peptide free input fasta")
+        logging.debug("Generating signal peptide free input fasta")
         # i.e. taking all sequences without signal peptides and the mature
         # sequences of those that do have them.
 
@@ -252,10 +275,10 @@ class predictSecretome(object):
                                      self.files['sig_pep_free_seqs'])
 
 
-        print("##Search for TM domains in sequences without ##")
+        logging.info("##Search for TM domains in sequences without ##")
         tmhmm_output = subprocess.check_output(tmhmm_cmd.split())
         tmhmm_output = tmhmm_output.decode('ascii').split('\n')
-        print("Search complete")
+        logging.debug("Search complete")
 
         with open(os.path.join(self.settings['work_dir'], "tmhmm_output"), 'w') as tmhmm_fh:
             for line in tmhmm_output:
@@ -263,7 +286,7 @@ class predictSecretome(object):
 
 
 
-        print("Parsing results")
+        logging.debug("Parsing results")
         # Parse tmhmm raw output and write acc without tm domains
         # in non signal peptide sequence to output_file
 
@@ -283,7 +306,7 @@ class predictSecretome(object):
         self.outputs.update({'non_tm_mature_accs': acc_without_tm_in_mature_seq})
 
         if self.settings['transporters']:
-            print("##Generating List of Putative Transporters##")
+            logging.info("##Generating List of Putative Transporters##")
             transporters = os.path.join(self.settings['output_dir'],
                                         'transporters_{}_tm_domains'.format(self.settings['transporters']))
 
@@ -324,14 +347,14 @@ class predictSecretome(object):
                                     'targetp-1.1'),
                        home_targetp)
         except OSError:
-            print("Symlink hack for targetp already exists, proceeding anyway")
+            logging.warning("Symlink hack for targetp already exists, proceeding anyway")
         # FileExistsError:
         targetp_path = os.path.join(self.dep_path, 'targetp')
 
 
         # so due to the problems with targetp there is some limit to the total
         # fasta input length therefore need to crop sequences and split fasta file
-        print("Splitting and truncating signal peptide containing sequences for "
+        logging.debug("Splitting and truncating signal peptide containing sequences for "
               "targetp")
         record_iterator = SeqIO.parse(open(self.files['sequences_with_sig']),
                                       'fasta')
@@ -356,7 +379,7 @@ class predictSecretome(object):
             partial_fasta_with_sig_fps.append(split_filename)
 
         # run targetp
-        print("Running targetp on split files")
+        logging.debug("Running targetp on split files")
         targetp_output = []
         for subfile in partial_fasta_with_sig_fps:
             targetp_cmd = "{0} {1} {2}".format(targetp_path,
@@ -368,8 +391,8 @@ class predictSecretome(object):
                                             stderr=subprocess.PIPE)
             targetp_stdout, targetp_stderr = targetp_proc.communicate()
             if 'Aborted' in targetp_stderr.decode('ascii'):
-                print(targetp_cmd)
-                print("targetp has crashed, unfortunately as the core of"
+                (targetp_cmd)
+                logging.error("targetp has crashed, unfortunately as the core of"
                        "targetp is only distributed as a trained and compiled fortran"
                        "ANN this is hard to debug.  Possibly your input file is too"
                        "large, attempt splitting and re-running using partial"
@@ -379,7 +402,7 @@ class predictSecretome(object):
             partial_output = targetp_stdout.decode('ascii').split('\n')[8:-3]
             targetp_output = targetp_output + partial_output
 
-        print("Targetp search complete")
+        logging.debug("Targetp search complete")
 
         #os.unlink(home_targetp)
 
@@ -389,7 +412,7 @@ class predictSecretome(object):
                 targetp_fh.write(line + '\n')
 
 
-        print("Parsing results")
+        logging.debug("Parsing results")
         # remove header and tail cruft in targetp output
         # and get those that have S as top predicted target
         secreted_accessions = []
@@ -418,7 +441,7 @@ class predictSecretome(object):
                                                self.settings['euk_type'],
                                                self.files['reformatted_input'])
 
-        print("##Identifying sequences belonging to 'extracellular' compartment##")
+        logging.info("##Identifying sequences belonging to 'extracellular' compartment##")
 
         wolfpsort_output = subprocess.check_output(wolfpsort_cmd, shell=True)
         wolfpsort_output = wolfpsort_output.decode('ascii').split('\n')
@@ -427,10 +450,10 @@ class predictSecretome(object):
             for line in wolfpsort_output:
                 wolf_fh.write(line + '\n')
 
-        print("Search complete")
+        logging.debug("Search complete")
 
 
-        print("Parsing results")
+        logging.debug("Parsing results")
         # Removes header from output
         extracellular_accessions = []
         for line in wolfpsort_output[1:-1]:
@@ -445,17 +468,17 @@ class predictSecretome(object):
         Get secretome accessions from the predictions
         """
         # if predictions not done, then do them
-        print("##Combining predictions##")
+        logging.info("##Combining predictions##")
 
         sig_peptides = set(self.outputs['acc_with_sig'])
         no_tm_in_mature = set(self.outputs['non_tm_mature_accs'])
         secreted_sig = set(self.outputs['secreted_acc'])
         extracellular = set(self.outputs['extracellular_acc'])
 
-        print("Accessions with signal peptides (signalp):", len(sig_peptides), sig_peptides)
-        print("Accessions without a TM in mature sequence (tmhmm):", len(no_tm_in_mature), no_tm_in_mature)
-        print("Secreted signal peptide (targetp):", len(secreted_sig), secreted_sig)
-        print("Extracellular (wolfpsort):", len(extracellular), extracellular)
+        logging.info("Accessions with signal peptides (signalp): {}".format(len(sig_peptides)))
+        logging.info("Accessions without a TM in mature sequence (tmhmm): {}".format(len(no_tm_in_mature)))
+        logging.info("Secreted signal peptide (targetp): {}".format(len(secreted_sig)))
+        logging.info("Extracellular (wolfpsort): {}".format(len(extracellular)))
 
         # if conservative only get those accessions predicted as
         # A) having a signal peptide (signalp)
@@ -485,7 +508,7 @@ class predictSecretome(object):
                                            extracellular)
 
         if len(predicted_acc_list) is 0:
-            print("No secreted proteins found using {0} setting".format(self.out_flag))
+            logging.warning("No secreted proteins found using {0} setting".format(self.out_flag))
 
         self.outputs.update({'predicted_secretome_acc': predicted_acc_list})
 
@@ -500,7 +523,7 @@ class predictSecretome(object):
         Output file to output fasta.
         """
 
-        print("##Writing predicted secretome fasta file##")
+        logging.info("##Writing predicted secretome fasta file##")
 
         formatted_input_fp = open(self.files['reformatted_input'], 'r')
 
@@ -515,7 +538,7 @@ class predictSecretome(object):
 
         records_written = 0
 
-        print("Retreving Secretome fasta")
+        logging.debug("Retreving Secretome fasta")
 
         for record in SeqIO.parse(formatted_input_fp, 'fasta'):
             if record.description in self.outputs['predicted_secretome_acc']:
@@ -528,9 +551,9 @@ class predictSecretome(object):
         if records_written > 0:
             fasta_out.write_footer()
         else:
-            print("No secreted proteins found")
+            logging.warning("No secreted proteins found")
         out_handle.close()
-        print("Secretome identification Complete")
+        logging.debug("Secretome identification Complete")
 
     def run_predict(self):
         """

@@ -4,6 +4,7 @@ Input multi-protein fasta and generate a conservative or permissive
 predicted secretome as output.
 """
 from __future__ import print_function
+import logging
 import sys
 import subprocess
 import shutil
@@ -102,22 +103,8 @@ def which(bin_path, program):
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
 
-def print_verbose(string, v_flag=False):
-    """
-    Print string only if v_flag is true
-
-    input: string - string to print
-           v_flag - bool to say whether to print
-    output: none
-    """
-
-    if v_flag:
-        print(string)
-
-
 def check_dependencies(path='predict_secretome/dependencies/bin',
-                       check_run=False,
-                       verbose=False):
+                       check_run=False):
     """
     Check the dependencies are in the bin_path and are executable
     then output a summary if doing a dry 'check run' or in verbose mode
@@ -130,25 +117,21 @@ def check_dependencies(path='predict_secretome/dependencies/bin',
 
     # if we are running a check run then we want verbose output for this
     # regardless of other settings
-    if check_run:
-        verbose = True
-
     dependency_list = ["signalp", "tmhmm", "targetp",
                        "runWolfPsortSummary"]
 
     check_execs = {dependency: which(path, dependency) for dependency in\
                         dependency_list}
 
-    print_verbose("\n##Checking Depdencies##", v_flag=verbose)
-    for dependency in check_execs:
-        print_verbose("{0} is present? {1}".format(dependency,
-                                                   check_execs[dependency]),
-                      v_flag=verbose)
+    print("##Checking Dependencies##")
+    #for dependency in check_execs:
+    #    print("{0} is present? {1}".format(dependency,
+    #                                       check_execs[dependency]))
 
     # if any dependency is missing quit
     if not all(check_execs.values()):
         print("Dependency absent")
-        sys.exit(0)
+        sys.exit(1)
 
     # if running in check mode quite after checking
     if check_run:

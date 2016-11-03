@@ -143,15 +143,17 @@ class TestDependencies(CoreTestingClass):
         Test the targetp dependency is installed and works as expected
         """
 
-        username = os.getlogin()
-        home_targetp = '/home/{0}/targetp-1.1'.format(username)
+        home_targetp = os.path.join(os.path.expanduser('~'), 'targetp-1.1')
         shutil.copytree('dependencies/targetp-1.1', home_targetp)
 
         self.run_dependencies_and_check_output('expected_targetp_output',
                                                'actual_targetp_output',
                                                '{0} {1}',
                                                'targetp')
-        shutil.rmtree(home_targetp)
+        try:
+            shutil.rmtree(home_targetp)
+        except OSError:
+            os.unlink(home_targetp)
 
 
     def test_wolfpsort(self):

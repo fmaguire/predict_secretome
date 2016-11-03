@@ -430,7 +430,9 @@ def targetp(full_sequences_with_sigpep_fp,
 
     username = os.getlogin()
     home_targetp = '/home/{0}/targetp-1.1'.format(username)
-    shutil.copytree('dependencies/targetp-1.1', home_targetp)
+
+    if not os.path.exists(home_targetp):
+        shutil.copytree('dependencies/targetp-1.1', home_targetp)
 
     targetp_path = os.path.join(path, 'targetp')
     targetp_cmd = "{0} {1} {2}".format(targetp_path,
@@ -442,7 +444,12 @@ def targetp(full_sequences_with_sigpep_fp,
     targetp_output = subprocess.check_output(targetp_cmd.split())
     targetp_output = targetp_output.decode('ascii').split('\n')
     print_verbose("Search complete", v_flag=verbose)
-    shutil.rmtree(home_targetp)
+
+    # remove symlink or file
+    try:
+        shutil.rmtree(home_targetp)
+    except OSError:
+        os.remove(home_targetp)
 
     print_verbose("Parsing results", v_flag=verbose)
     # remove header and tail cruft in targetp output

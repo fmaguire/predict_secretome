@@ -5,7 +5,6 @@ predicted secretome as output.
 """
 from __future__ import print_function
 import sys
-import pwd
 import subprocess
 import shutil
 import warnings
@@ -429,8 +428,8 @@ def targetp(full_sequences_with_sigpep_fp,
     # can't handle paths longer than 80 chars so as a hack fix I'm creating
     # a symlink to /home/user and removing it after execution
 
-    username = pwd.getpwuid(os.getuid())[0]
-    home_targetp = '/home/{0}/targetp-1.1'.format(username)
+    home_targetp = os.path.join(os.path.expanduser('~'),
+                                'targetp-1.1')
 
     if not os.path.exists(home_targetp):
         shutil.copytree('dependencies/targetp-1.1', home_targetp)

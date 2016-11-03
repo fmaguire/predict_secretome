@@ -431,6 +431,10 @@ def targetp(full_sequences_with_sigpep_fp,
     home_targetp = os.path.join(os.path.expanduser('~'),
                                 'targetp-1.1')
 
+    if os.path.exists(home_targetp):
+        print("Please remove '~/targetp-1.1' to run script")
+        sys.exit(1)
+
     if not os.path.exists(home_targetp):
         shutil.copytree('dependencies/targetp-1.1', home_targetp)
 
